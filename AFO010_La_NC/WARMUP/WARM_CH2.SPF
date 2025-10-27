@@ -1,0 +1,52 @@
+; Programart    : Kundenspezifisch
+; Pfad          : WKS
+; WERK          : Berlin
+; PROJEKT       : BMW Berlin
+; MASCHINE      : CT 220, G7500251.004
+; STEUERUNG     : Siemens 840D
+; PROGRAMM      : WARM_CH2.SPF
+; WERKSRUECK    : 5 A9D 7E9
+; MATERIAL      : 
+; ZEICHNUNGSNR. : 
+; TYP           : 
+; OPERATION     : OP10
+;----------------------------------------------------------
+; VERSION       : 01.00.00
+; DATUM / NAME  : 2023 ZMIJA
+;----------------------------------------------------------
+; Beschreibung   : 
+
+;----------------------------------------------------------
+;==========================================================
+LOOP
+
+WAITM(1,1,2)
+
+;**********************************
+N990 T="Plausibles WKZ eingeben"  
+N1000 L6
+;**********************************
+
+N1070 G0 G54 G96 Z2=300 X2=150 D1 S=500 M3
+
+N1100 G1 Z2=100 X2=10 F0.35
+N1111 G1 Z2=300 X2=150
+
+N1111 G4 F8
+
+;**********************************
+N990 T="Plausibles WKZ eingeben"  
+N1000 L6
+;**********************************
+
+N1070 G0 G54 G96 Z2=300 X2=150 D1
+
+N1100 G1 Z2=100 X2=10 F0.35
+N1111 G1 Z2=300 X2=150
+
+N1111 G4 F8
+
+ENDLOOP
+
+
+N2570 M30 

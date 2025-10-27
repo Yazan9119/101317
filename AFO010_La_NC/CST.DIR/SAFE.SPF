@@ -1,0 +1,302 @@
+; SAFE_CHECKSUM = 00109ea2H
+;
+;-----------------------------------------------------------------
+; Werk                : BMW BERLIN
+; Projekt             : 
+; Maschine            : FLT Ladeportal
+; Programmbezeichnung : SAFE.SPF
+; Kanalnummer         : 1
+; Zeichnung           : --
+; Bauteil             : GELENKWELLE
+; Operation           : AFO010
+; Einheit             : --
+;-----------------------------------------------------------------
+; Erstellt            : 21.11.2019  FLT/KE  -CM-
+; Aenderung           : 17.10.2023  STM
+;-----------------------------------------------------------------
+; Bemerkungen:
+;
+;-----------------------------------------------------------------
+;
+;-----------------------------------------------------------------
+; Definition der externen Signale
+;-----------------------------------------------------------------
+;>>> Eingaenge
+N100 DEFINE SIE_NH_IO           AS $A_INSE[1]  ;DB18.DBX38.0 - Not-Halt in Ordnung
+N110 DEFINE SIE_ZUSTIMM         AS $A_INSE[2]  ;DB18.DBX38.1 - Zustimmbetrieb aktiv
+N120 DEFINE SIE_SE_LP_IO        AS $A_INSE[3]  ;DB18.DBX38.2 - Schutzkreis Ladeportal i.O.
+N130 DEFINE SIE_L_LOCK          AS $A_INSE[4]  ;DB18.DBX38.3 - Laufwagensperre vorne
+;N00 DEFINE SIE_SE_EB_IO        AS $A_INSE[4]  ;DB18.DBX38.3 - Schutzkreis Einlauf i.O.
+;N00 DEFINE SIE_SE_AB_IO        AS $A_INSE[5]  ;DB18.DBX38.4 - Schutzkreis Auslauf i.O.
+;
+;>>> Ausgaenge
+N140 DEFINE SOE_KOLLI_EB        AS $A_OUTSE[1]  ;DB18.DBX46.0 - Lader im Stoerbereich Einlauf
+N150 DEFINE SOE_KOLLI_AB        AS $A_OUTSE[2]  ;DB18.DBX46.1 - Lader im Stoerbereich Auslauf
+N160 DEFINE SOE_FREI_EB         AS $A_OUTSE[3]  ;DB18.DBX46.2 - Lader außer Stoerbereich Einlauf
+N170 DEFINE SOE_EXTBR_Z2_LOESEN AS $A_OUTSE[4]  ;DB18.DBX46.3 - Externe bremse Z2-Achse loesen
+N180 DEFINE SOE_REL_SE          AS $A_OUTSE[5]  ;DB18.DBX46.4 - Freigabe Schutztuzere oeffnen
+;
+;-----------------------------------------------------------------
+; Definition der internen Signale
+;-----------------------------------------------------------------
+;>>> Eingaenge
+N220 DEFINE SII_X1_GRT_MINUS    AS $A_INSI[1]  ;Sicherer SW-Nocken Grst X1 Minus
+N230 DEFINE SII_X1_GRT_PLUS     AS $A_INSI[2]  ;Sicherer SW-Nocken Grst X1 Plus
+N240 DEFINE SII_X1_EB_MINUS     AS $A_INSI[3]  ;Sicherer SW-Nocken Einlauf X1 Minus
+N250 DEFINE SII_X1_EB_PLUS      AS $A_INSI[4]  ;Sicherer SW-Nocken Einlauf X1 Plus
+N260 DEFINE SII_X1_AB_MINUS     AS $A_INSI[5]  ;Sicherer SW-Nocken Auslauf X1 Minus
+N270 DEFINE SII_X1_AB_PLUS      AS $A_INSI[6]  ;Sicherer SW-Nocken Auslauf X1 Plus
+;
+N280 DEFINE SII_Z1_GRT_MINUS    AS $A_INSI[23] ;Sicherer SW-Nocken Grst Z1 Minus
+N290 DEFINE SII_Z1_GRT_PLUS     AS $A_INSI[24] ;Sicherer SW-Nocken Grst Z1 Plus
+N300 DEFINE SII_Z2_GRT_MINUS    AS $A_INSI[25] ;Sicherer SW-Nocken Grst Z2 Minus
+N310 DEFINE SII_Z2_GRT_PLUS     AS $A_INSI[26] ;Sicherer SW-Nocken Grst Z2 Plus
+N320 DEFINE SII_Z1_UNTEN_MINUS  AS $A_INSI[27] ;Sicherer SW-Nocken unten Z1 Minus
+N330 DEFINE SII_Z1_UNTEN_PLUS   AS $A_INSI[28] ;Sicherer SW-Nocken unten Z1 Plus
+N340 DEFINE SII_Z2_UNTEN_MINUS  AS $A_INSI[29] ;Sicherer SW-Nocken unten Z2 Minus
+N350 DEFINE SII_Z2_UNTEN_PLUS   AS $A_INSI[30] ;Sicherer SW-Nocken unten Z2 Plus
+N360 DEFINE SII_STOP_A_X1       AS $A_INSI[31] ;X1-Achse Stop A/B aktiv
+N370 DEFINE SII_STOP_A_Z1       AS $A_INSI[32] ;Z1-Achse Stop A/B aktiv
+N380 DEFINE SII_STOP_A_Z2       AS $A_INSI[33] ;Z2-Achse Stop A/B aktiv
+;
+N390 DEFINE SII_N_Nx_X1         AS $A_INSI[41] ;X1-Achse n<nx
+N400 DEFINE SII_N_Nx_Z1         AS $A_INSI[42] ;Z1-Achse n<nx
+N410 DEFINE SII_N_Nx_Z2         AS $A_INSI[43] ;Z2-Achse n<nx
+;
+N420 DEFINE SII_REF_X1          AS $A_INSI[51] ;X1-Achse ist sicher referenziert
+N430 DEFINE SII_REF_Z1          AS $A_INSI[52] ;Z1-Achse ist sicher referenziert
+N440 DEFINE SII_REF_Z2          AS $A_INSI[53] ;Z2-Achse ist sicher referenziert
+;
+;>>> Ausgaenge
+N450 DEFINE SOI_SVSS_DISABLE    AS $A_OUTSI[1]  ;MD36970 Abwahl SBH/SG
+N460 DEFINE SOI_SS_DISABLE      AS $A_OUTSI[2]  ;MD36971 Abwahl SBH
+N470 DEFINE SOI_VELO_0          AS $A_OUTSI[3]  ;MD36972[0] SG-Auswahl BIT 0
+N480 DEFINE SOI_VELO_1          AS $A_OUTSI[4]  ;MD36972[1] SG-Auswahl BIT 1
+N490 DEFINE SOI_EXT_STOP_A      AS $A_OUTSI[5]  ;MD36977[0] Abwahl Stop A
+N500 DEFINE SOI_EXT_STOP_C      AS $A_OUTSI[6]  ;MD36977[1] Abwahl Stop C
+N510 DEFINE SOI_EXT_STOP_D      AS $A_OUTSI[7]  ;MD36977[2] Abwahl Stop D
+N520 DEFINE SOI_EXT_STOP_C_X1   AS $A_OUTSI[8]  ;MD36977[1](X1) Abwahl Stop C fuer X1-Achse
+N530 DEFINE SOI_EXT_STOP_C_Z1   AS $A_OUTSI[9]  ;MD36977[1](Z1) Abwahl Stop C fuer Z1-Achse
+N540 DEFINE SOI_EXT_STOP_C_Z2   AS $A_OUTSI[10] ;MD36977[1](Z2) Abwahl Stop C fuer Z2-Achse
+;
+N550 DEFINE SOI_SE_X1           AS $A_OUTSI[40] ;MD36973(X1) Abwahl sichere Endlagen fuer X1-Achse
+N560 DEFINE SOI_SE_Z1           AS $A_OUTSI[41] ;MD36973(Z1) Abwahl sichere Endlagen fuer Z1-Achse
+N570 DEFINE SOI_SE_Z2           AS $A_OUTSI[42] ;MD36973(Z2) Abwahl sichere Endlagen fuer Z2-Achse
+;
+;-----------------------------------------------------------------
+; Definition der Merker
+;-----------------------------------------------------------------
+N580 DEFINE SMA_NH_IO          AS $A_MARKERSI[1]  ;DB18.DBX70.0 Not-Halt ist i.O. und quittiert
+N590 DEFINE SMA_SIE_NH_IO      AS $A_MARKERSI[2]  ;DB18.DBX70.1 Not-Halt ist i.O. (nicht betaetigt)
+N600 DEFINE SMA_QUIT_NH_IO     AS $A_MARKERSI[3]  ;DB18.DBX70.2 Not-Halt ist quittiert
+;
+N610 DEFINE SMA_SE_IO          AS $A_MARKERSI[5]  ;DB18.DBX70.4 Alle Schutzeinrichtungen i.O.
+;
+N620 DEFINE SMA_LAST_EIN       AS $A_MARKERSI[10] ;DB18.DBX71.1 Lastspannung Ladeportal einschalten
+N630 DEFINE SMA_LAST_EIN_ZST   AS $A_MARKERSI[11] ;DB18.DBX71.2 Lastspannung Ladeportal einschalten im Zustimmbetrieb
+;
+N640 DEFINE SMA_LAST_IST_EIN   AS $A_MARKERSI[15] ;DB18.DBX71.6 Lastspannung Ladeportal ist eingeschaltet
+N650 DEFINE SMA_LAST_IST_EIN_ZST AS $A_MARKERSI[16] ;DB18.DBX71.7 Lastspannung Ladeportal ist eingeschaltet im Zustimmbetrieb
+;
+N660 DEFINE SMA_LAST_AUS       AS $A_MARKERSI[20] ;DB18.DBX72.3 Lastspannung Ladeportal ausschalten
+N670 DEFINE SMA_RM_LAST_EIN    AS $A_MARKERSI[21] ;DB18.DBX72.4 Rueckmeldung Lastspannung Ladeportal ist eingeschaltet
+N680 DEFINE SMA_RM_LAST_AUS    AS $A_MARKERSI[22] ;DB18.DBX72.5 Rueckmeldung Lastspannung Ladeportal ist ausgeschaltet
+;
+N690 DEFINE SMA_REF_IO         AS $A_MARKERSI[25] ;DB18.DBX73.0 Alle Achsen sind sicher referenziert
+N700 DEFINE SMA_N_Nx_IO        AS $A_MARKERSI[26] ;DB18.DBX73.1 Alle Achsen n<nx
+N710 DEFINE SMA_ZUSTIMM        AS $A_MARKERSI[27] ;DB18.DBX73.2 Zustimmbetrieb aktiv
+;
+N720 DEFINE SMA_LP_SICHER_POS  AS $A_MARKERSI[30] ;DB18.DBX73.5 Ladeportal ist in sicherer Position
+N730 DEFINE SMA_LP_POS_EB      AS $A_MARKERSI[31] ;DB18.DBX73.6 Ladeportal ist in Bereich Einlauf
+N740 DEFINE SMA_LP_POS_AB      AS $A_MARKERSI[32] ;DB18.DBX73.7 Ladeportal ist in Bereich Auslauf
+N749 DEFINE OPT_Z1_VORH        AS $A_MARKERSI[64] ;DB18.DBX77.7 Option Z1-Achse vorhanden
+
+;
+;-----------------------------------------------------------------
+; Definition der Timer
+;-----------------------------------------------------------------
+N750 DEFINE STI_LAST_EIN          AS $A_TIMERSI[1]
+N760 DEFINE STI_LAST_EIN_ZST      AS $A_TIMERSI[2]
+;
+;-----------------------------------------------------------------
+; Definition der Koordinationssignale von/an PLC
+;-----------------------------------------------------------------
+;>>> Eingaenge // NC <- PLC
+N770 DEFINE SIP_ANF_TEST_STOP_A  AS $A_PLCSIIN[1]  ;DB18.DBX132.0 Anforderung Teststop A/B
+N780 DEFINE SIP_ANF_TEST_STOP_C  AS $A_PLCSIIN[2]  ;DB18.DBX132.1 Anforderung Teststop C
+N790 DEFINE SIP_ANF_TEST_STOP_D  AS $A_PLCSIIN[3]  ;DB18.DBX132.2 Anforderung Teststop D
+N800 DEFINE SIP_QUIT_NH          AS $A_PLCSIIN[4]  ;DB18.DBX132.3 Not-Halt Quittierung
+N810 DEFINE SIP_LAST_IST_EIN     AS $A_PLCSIIN[5]  ;DB18.DBX132.4 Lastspannung Ladeportal ist eingeschaltet
+N820 DEFINE SIP_ANF_LAST_EIN     AS $A_PLCSIIN[6]  ;DB18.DBX132.5 Anforderung Lastspannung Ladeportal einschalten
+N830 DEFINE SIP_TEST_LSS1        AS $A_PLCSIIN[7]  ;DB18.DBX132.6 Test Lastspannungsschuetz 1
+N840 DEFINE SIP_TEST_LSS2        AS $A_PLCSIIN[8]  ;DB18.DBX132.7 Test Lastspannungsschuetz 2
+N850 DEFINE SIP_TEST_LSS3        AS $A_PLCSIIN[9]  ;DB18.DBX133.0 Test Lastspannungsschuetz 3
+;
+N855 DEFINE SIP_TEST_EXTBR_Z2    AS $A_PLCSIIN[14] ;DB18.DBX133.5 Test Externe Bremse Z2-Achse
+;
+N860 DEFINE SIP_DRIVE_READY      AS $A_PLCSIIN[17] ;DB18.DBX134.0 Alle Antriebe betriebsbereit
+;
+N870 DEFINE SIP_ANF_ST           AS $A_PLCSIIN[20] ;DB18.DBX134.3 Anforderung Schutztuer oeffnen
+;
+N880 DEFINE SIP_HNTE_ST          AS $A_PLCSIIN[22] ;DB18.DBX134.5 Halt nach Taktende erreicht (nach Anf. Schutztuer oeffnen)
+;
+N890 DEFINE SIP_UE_SB            AS $A_PLCSIIN[30] ;DB18.DBX135.5 Ueberbrueckung Schutzbereiche aktiv
+;
+;>>> Ausgaenge // NC -> PLC
+N900 DEFINE SOP_LP_EB           AS $A_PLCSIOUT[1]  ;DB18.DBX128.0 Ladeportal im Bereich Einlauf
+N910 DEFINE SOP_LP_AB           AS $A_PLCSIOUT[2]  ;DB18.DBX128.1 Ladeportal im Bereich Auslauf
+;
+;-----------------------------------------------------------------
+; NCK SPL-Teil
+;-----------------------------------------------------------------
+N920 MSG ("SPL wird gestartet")
+;
+;-----------------------------------------------------------------
+; Merker
+;-----------------------------------------------------------------
+;>>> Option Z1-Achse vorhanden 
+N929 IDS=10  DO OPT_Z1_VORH = 0
+
+;>>> Not-Halt ist in Ordnung (nicht betaetigt)
+N930 IDS=11  DO SMA_SIE_NH_IO = SIE_NH_IO
+;
+;>>> Not-Halt ist quittiert
+N940 IDS=12 WHENEVER (NOT SMA_SIE_NH_IO) DO SMA_QUIT_NH_IO = 0
+N950 IDS=13 WHENEVER (SMA_SIE_NH_IO AND SIP_QUIT_NH) DO SMA_QUIT_NH_IO = 1
+;
+;>>> Not-Halt ist in Ordnung und quittiert
+N960 IDS=14 DO SMA_NH_IO = SMA_SIE_NH_IO AND SMA_QUIT_NH_IO
+;
+;>>> Alle Schutzeinrichtungen in Schutzstellung
+N970 IDS=15 DO SMA_SE_IO = SIE_SE_LP_IO
+;
+;>>> Zustimmbetrieb ist aktiv
+N980 IDS=20 DO SMA_ZUSTIMM = SMA_SIE_NH_IO AND SIE_ZUSTIMM
+;
+;>>> Alle Achsen sind sicher referenziert
+N990 IDS=21 DO SMA_REF_IO = SII_REF_X1 AND (SII_REF_Z1 OR NOT OPT_Z1_VORH) AND SII_REF_Z2
+;
+;>>> Alle Achsen n<nx
+N1000 IDS=22 DO SMA_N_Nx_IO = SII_N_Nx_X1 AND (SII_N_Nx_Z1 OR NOT OPT_Z1_VORH) AND SII_N_Nx_Z2
+;
+;>>> Ladeportal ist in sicheren Position
+N1010 IDS=23 DO SMA_LP_SICHER_POS = SMA_REF_IO AND SMA_N_Nx_IO AND SII_X1_GRT_MINUS AND NOT SII_X1_GRT_PLUS AND ((SII_Z1_GRT_MINUS AND NOT SII_Z1_GRT_PLUS) OR NOT OPT_Z1_VORH) AND SII_Z2_GRT_MINUS AND NOT SII_Z2_GRT_PLUS
+
+;>>> Ladeportal ist in sicheren Position Einlauf
+N1020 IDS=24 DO SMA_LP_POS_EB = SMA_REF_IO AND SII_X1_EB_MINUS AND NOT SII_X1_EB_PLUS; AND SII_Z1_GRT_MINUS AND NOT SII_Z1_GRT_PLUS  AND SII_Z2_GRT_MINUS AND NOT SII_Z2_GRT_PLUS
+
+;>>> Ladeportal ist in sicheren Position Auslauf
+N1030 IDS=25 DO SMA_LP_POS_AB = SMA_REF_IO AND SII_X1_AB_MINUS AND NOT SII_X1_AB_PLUS; AND SII_Z1_GRT_MINUS AND NOT SII_Z1_GRT_PLUS  AND SII_Z2_GRT_MINUS AND NOT SII_Z2_GRT_PLUS
+
+;>>> Lastspannung Ladeportal ausschalten
+N1040 IDS=28 DO SMA_LAST_AUS = SIP_ANF_ST AND SIP_HNTE_ST AND SMA_LP_SICHER_POS
+
+;>>> Lastspannung Ladeportal einschalten
+N1050 IDS=30 DO SMA_LAST_EIN = SIP_ANF_LAST_EIN AND SMA_NH_IO AND SMA_SE_IO AND NOT SMA_LAST_AUS
+
+;>>> Lastspannung Ladeportal einschalten im Zustimmbetrieb
+N1060 IDS=31 DO SMA_LAST_EIN_ZST = SIP_ANF_LAST_EIN AND SMA_NH_IO AND NOT SMA_SE_IO AND SMA_ZUSTIMM
+
+;>>> Ausschaltverzoegerung Lastspannung Ladeportal einschalten
+N1070 IDS=32 EVERY (SMA_LAST_EIN==0) DO STI_LAST_EIN = 0
+N1080 IDS=33 EVERY (SMA_LAST_EIN==1) DO STI_LAST_EIN = -1
+
+;>>> Ausschaltverzoegerung Lastspannung Ladeportal einschalten im Zustimmbetrieb
+N1090 IDS=34 EVERY (SMA_LAST_EIN_ZST==0) DO STI_LAST_EIN_ZST = 0
+N1100 IDS=35 EVERY (SMA_LAST_EIN_ZST==1) DO STI_LAST_EIN_ZST = -1
+
+;>>> Lastspannung Ladeportal ist eingeschaltet
+N1110 IDS=36 EVERY SMA_LAST_EIN DO SMA_LAST_IST_EIN = 1
+N1120 IDS=37 EVERY NOT SMA_LAST_EIN AND (STI_LAST_EIN>=1.1) DO SMA_LAST_IST_EIN = 0
+
+;>>> Lastspannung Ladeportal ist eingeschaltet im Zustimmbetrieb
+N1130 IDS=38 EVERY SMA_LAST_EIN_ZST DO SMA_LAST_IST_EIN_ZST = 1
+N1140 IDS=39 EVERY NOT SMA_LAST_EIN_ZST AND (STI_LAST_EIN_ZST>=0.5) DO SMA_LAST_IST_EIN_ZST = 0
+
+;>>> Rueckmeldung Lastspannung Ladeportal ist eingeschaltet
+N1150 IDS=43 DO SMA_RM_LAST_EIN = SIP_LAST_IST_EIN
+
+;>>> Rueckmeldung Lastspannung Ladeportal ist ausgeschaltet
+N1160 IDS=44 DO SMA_RM_LAST_AUS = NOT SIP_LAST_IST_EIN
+;
+;-----------------------------------------------------------------
+; Externe Ausgaenge
+;-----------------------------------------------------------------
+;>>> Lader im Stoerbereich Einlauf
+N1170 IDS=50 DO SOE_KOLLI_EB = SMA_LP_POS_EB
+;
+;>>> Lader im Stoerbereich Auslauf
+N1180 IDS=51 DO SOE_KOLLI_AB = SMA_LP_POS_AB
+;
+;>>> Freigabe Schutztuzere oeffnen
+N1190 IDS=54 DO SOE_REL_SE = SMA_LP_SICHER_POS AND SMA_RM_LAST_AUS
+;
+;-----------------------------------------------------------------
+; Interne Ausgaenge
+;-----------------------------------------------------------------
+;>>> Abwahl Stop A fuer alle Achsen
+N1200 IDS=60 DO SOI_EXT_STOP_A = ((SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST) AND NOT SIP_ANF_TEST_STOP_A)
+;
+;>>> Abwahl Stop C fuer alle Achsen
+N1210 IDS=61 DO SOI_EXT_STOP_C = ((SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST) AND (SMA_SE_IO OR SIE_ZUSTIMM) AND NOT SIP_ANF_TEST_STOP_C)
+;
+;>>> Abwahl Stop D fuer alle Achsen
+N1220 IDS=62 DO SOI_EXT_STOP_D = ((SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST) AND NOT SIP_ANF_TEST_STOP_D AND SMA_NH_IO)
+;
+;>>> Abwahl Stop C fuer X1-Achse
+N1230 IDS=63 DO SOI_EXT_STOP_C_X1 = ((SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST) AND (SMA_SE_IO OR SIE_ZUSTIMM) AND NOT SIP_ANF_TEST_STOP_C)
+;
+;>>> Abwahl Stop C fuer Z1-Achse
+N1240 IDS=64 DO SOI_EXT_STOP_C_Z1 = ((SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST) AND (SMA_SE_IO OR SIE_ZUSTIMM) AND NOT SIP_ANF_TEST_STOP_C AND OPT_Z1_VORH)
+;
+;>>> Abwahl Stop C fuer Z2-Achse
+N1250 IDS=65 DO SOI_EXT_STOP_C_Z2 = ((SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST) AND (SMA_SE_IO OR SIE_ZUSTIMM) AND NOT SIP_ANF_TEST_STOP_C)
+;
+;>>> Abwahl sicherer Betriebshalt / sichere Geschwindigkeit
+N1260 IDS=70 DO SOI_SVSS_DISABLE = ((SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST) AND SMA_SE_IO)
+;
+;>>> Abwahl sicherer Betriebshalt
+N1270 IDS=71 DO SOI_SS_DISABLE = (SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST)
+;
+;>>> Auswahl sichere Geschwindigkeit
+;++++++++++++++++++++++++++++++++++++++++++++++++
+;| Bit1 | Bit0 | Sichere Geschwindigkeit        |
+;++++++++++++++++++++++++++++++++++++++++++++++++
+;|  0   |   0  | SG1 ist angewaehlt             |
+;|  0   |   1  | SG2 ist angewaehlt             |
+;|  1   |   0  | SG3 ist angewaehlt             |
+;|  1   |   1  | SG4 ist angewaehlt             |
+;++++++++++++++++++++++++++++++++++++++++++++++++
+N1280 IDS=74  DO SOI_VELO_0 = 0 SOI_VELO_1 = 0 
+N1290 IDS=75 WHENEVER (NOT SIE_SE_LP_IO) DO SOI_VELO_0 = 1
+N1300 IDS=76 DO SOI_VELO_1 = 0
+;
+;>>> Auswahl sichere Endlage fuer X1-Achse (0 = SE1 / 1 = SE2)
+N1310 IDS=80 DO SOI_SE_X1 = 0
+;
+;>>> Auswahl sichere Endlage fuer Z1-Achse (0 = SE1 / 1 = SE2)
+N1320 IDS=81 DO SOI_SE_Z1 = 0 
+;
+;>>> Auswahl sichere Endlage fuer Z2-Achse (0 = SE1 / 1 = SE2)
+N1330 IDS=82 DO SOI_SE_Z2 = 0 
+;
+;-----------------------------------------------------------------
+; Koordinationssignale NC -> PLC
+;-----------------------------------------------------------------
+;>>> Ladeportal im Bereich Einlauf
+N1340 IDS=83 DO SOP_LP_EB = SMA_LP_POS_EB
+;
+;>>> Ladeportal im Bereich Auslauf
+N1350 IDS=84 DO SOP_LP_AB = SMA_LP_POS_AB
+;
+;-----------------------------------------------------------------
+; Ansteuerung externe Bremse
+;-----------------------------------------------------------------
+;>>> Externe bremse Z2-Achse
+N1340 IDS=85 DO SOE_EXTBR_Z2_LOESEN = (NOT SII_STOP_A_Z2) AND $VA_DPE[Z2] AND (SMA_LAST_IST_EIN OR SMA_LAST_IST_EIN_ZST) AND (NOT SIP_TEST_EXTBR_Z2)
+;
+;-----------------------------------------------------------------
+;>>> Programmende
+;-----------------------------------------------------------------
+N1360 MSG ("NCK-SPL wurde gestartet")
+N1370 M30
