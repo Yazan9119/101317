@@ -1,0 +1,65 @@
+; Programart    : Kundenspezifisch
+; Pfad          : WKS
+; WERK          : Berlin
+; PROJEKT       : BMW Berlin
+; MASCHINE      : CT 220, G7500251.004
+; STEUERUNG     : Siemens 840D
+; PROGRAMM      : WARM_CH1.SPF
+; WERKSRUECK    : 5 A9D 7E9
+; MATERIAL      : 
+; ZEICHNUNGSNR. : 
+; TYP           : 
+; OPERATION     : OP10
+;----------------------------------------------------------
+; VERSION       : 01.00.00
+; DATUM / NAME  : 2023 ZMIJA
+;----------------------------------------------------------
+; Beschreibung   : 
+
+;----------------------------------------------------------
+;==========================================================
+
+N111 INIT(2,"WARM_CH2_SPF")
+N111 M46					; SPÄNEFÖRDERER EIN
+N111 H8010				; GESAMMTSPANNEN OHNE EINLESESPERRE
+N111 H4595				; ABSAUGUNG EIN
+N111 M59					; SPÄNESCHUTZTÜR VERRIEGELN
+N111 H8079				; LADELUKE SCHLIESSEN OHNE EINLESESPERRE
+N111 M110				; SPANNFUTTER SCHLIESSEN
+;N111 H4541             ; Rinne Spuelen an
+LIMS=2000
+
+LOOP
+
+WAITM(1,1,2)
+
+;**********************************
+N990 T="7086080"  ; Plausibles WKZ eingeben
+N1000 L6
+;**********************************
+
+N1030 STOPRE
+
+N1070 G0 G54 G96 Z=300 X=150 D1 S=500 M3
+
+N1100 G1 Z=100 X=10 F0.35
+N1111 G1 Z=300 X=150
+
+N1111 G4 F8
+
+;**********************************
+N990 T="3A7DD46"   ; Plausibles WKZ eingeben
+N1000 L6
+;**********************************
+
+N1070 G0 G54 G96 Z=300 X=150 D1
+
+N1100 G1 Z=100 X=10 F0.35
+N1111 G1 Z=300 X=150
+
+N1111 G4 F8
+
+ENDLOOP
+
+
+N2570 M30
