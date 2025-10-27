@@ -1,0 +1,141 @@
+;******************************************
+; Zyklus: HI_HOME
+; - Kanal 1: Hochlauf Grundstellung
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Hochlauf Initialisierung der Grundstellungsfahrt 
+; der Maschine
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_HOME
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_home save actblocno ;sblof displof
+
+def int lv_ax_num,lv_i,lv_ax_in_sys,lv_ref_nr,lv_real_ax
+def int lv_chan_bit
+def axis lv_ax
+
+;Maschinenmasssystem anwählen
+execstring(gd_select_scaling_system)
+
+;------------------------
+;Grundstellungspositionen
+;------------------------
+
+;-- Alle Maschinen(typen)
+gd_home_pos[0]=(gd_sw_cam_minus_pos_tab_3[0]+gd_sw_cam_plus_pos_tab_3[0])/2  ;X-Achse
+gd_home_pos[1]=(gd_sw_cam_minus_pos_tab_3[1]+gd_sw_cam_plus_pos_tab_3[1])/2  ;Y-Achse
+gd_home_pos[2]=(gd_sw_cam_minus_pos_tab_3[2]+gd_sw_cam_plus_pos_tab_3[2])/2  ;Z-Achse
+
+;-- Hüller Hille NBH
+if ((gd_mtyp >=1000) and (gd_mtyp<=1999))
+   ;-- A-/C-Achse
+   if ((gd_ax_a_vorh) or (gd_ax_c_vorh))
+      gd_home_pos[3]=(gd_sw_cam_minus_pos_tab_3[3]+gd_sw_cam_plus_pos_tab_3[3])/2  ;Grundstellungsposition A- / C-Achse
+      if (($ma_rot_is_modulo[m_a1]) and gd_ax_a_vorh) or (($ma_rot_is_modulo[m_c1]) and gd_ax_c_vorh)
+         if (gd_sw_cam_plus_pos_tab_3[3]-gd_sw_cam_minus_pos_tab_3[3]>180)
+            gd_home_pos[3]=((gd_sw_cam_plus_pos_tab_3[3]+gd_sw_cam_minus_pos_tab_3[3]) mod 360)/2 
+         endif
+      endif
+   endif 
+
+   ;-- B-Achse
+   if (gd_ax_b_vorh)
+      gd_home_pos[4]=(gd_sw_cam_minus_pos_tab_3[4]+gd_sw_cam_plus_pos_tab_3[4])/2
+      if ($ma_rot_is_modulo[m_b1])
+         if (gd_sw_cam_plus_pos_tab_3[4]-gd_sw_cam_minus_pos_tab_3[4]>180)
+            gd_home_pos[4]=((gd_sw_cam_plus_pos_tab_3[4]+gd_sw_cam_minus_pos_tab_3[4]) mod 360)/2
+         endif
+      endif
+   endif
+endif
+
+;-- Unisign-Maschinen (z.B. Uniport)
+if ((gd_mtyp >=2000) and (gd_mtyp<=2999))
+
+
+endif
+
+
+;------------------------
+;Referenzierreihenfolge
+;------------------------
+
+;Die Reihenfolge wird aus dem
+;Maschinendatum $ma_refp_cycle_nr
+;ausgelesen. Die Eintäge dort 
+;müssen eindeutig sein    
+
+
+lv_ax_in_sys=$on_num_axes_in_system + $on_num_add_axes_in_system
+lv_chan_bit=exp(ln(2)*($p_channo-1))
+stopre
+
+;Erstmal alles rücksetzen
+for lv_i=0 to 11
+    gd_home[lv_i]=0
+endfor
+
+lv_i=0 lv_real_ax=0
+
+;------------------------
+;-- Alle Achsen durchlaufen
+repeat
+   lv_ax_num=$mc_axconf_machax_used[lv_i]
+   if (lv_ax_num==0) gotof hl_cont
+   
+   gd_chan_to_axis[lv_ax_num-1]=gd_chan_to_axis[lv_ax_num-1] b_or lv_chan_bit
+   if ($p_channo==1)
+      if (lv_i<=$on_num_axes_in_system) 
+         lv_ax=axname($mn_axconf_machax_name_tab[lv_ax_num-1])
+         if ($ma_axconf_assign_master_chan[lv_ax]<=1)
+            lv_ref_nr=$ma_refp_cycle_nr[lv_ax]
+            if (lv_ref_nr>0)
+               if (gd_home[(lv_ref_nr-1)]==0)
+                  gd_home[(lv_ref_nr-1)]=lv_ax_num
+               else
+                  setal(66003,$mn_axconf_machax_name_tab[lv_ax_num-1]);Referenzierreihenfolge der Achse: %4 doppelt vergeben
+               endif      
+            endif
+         endif
+      endif
+   endif
+   lv_real_ax=lv_real_ax+1
+
+hl_cont:
+   lv_i=lv_i+1
+   stopre
+until(lv_real_ax==lv_ax_in_sys)or(lv_i==20);max chan-ax
+stopre
+
+;-----------------------------------
+;-- Daten für Simulation vorbesetzen
+if ($p_channo==1)
+   for lv_i=0 to 4 
+      lv_ax_num=gd_home[lv_i]
+      if (lv_ax_num==0) gotof hl_cont2
+  
+      lv_ax=axname($mn_axconf_machax_name_tab[lv_ax_num-1])
+      $mas_sim_start_position[lv_ax]=gd_home_pos[lv_ax_num-1]
+
+hl_cont2:
+   endfor
+endif
+
+ret
+

@@ -1,0 +1,17 @@
+proc hs_fehler(int lv_errno, string[32] lv_errpar, string[100] lv_errtxt)
+
+if (isfile(hs_log)
+   if not($p_subpar[1])
+      hs_log(lv_errtxt,'b1010',"UNIPORT")
+   else
+      hs_log("    Fehler: "<<lv_errno<<" Parameter: "<<lv_errpar,'b1010',"UNIPORT")
+   endif
+endif
+
+if $p_subpar[1]
+   setal(lv_errno,lv_errpar)
+endif
+
+ret
+
+

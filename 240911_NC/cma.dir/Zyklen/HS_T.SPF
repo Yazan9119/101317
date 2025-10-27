@@ -1,0 +1,50 @@
+;******************************************
+; Zyklus: HS_M66
+; - Kanal 1: Umprogrammieren T-Funktion
+;******************************************
+; Autor: M. Schaaf
+; Datum: 27.08.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Werkzeugaufruf T= auf PSEL für Uniport 
+; umprogrammieren
+;
+; Version
+; =======
+; V01.00.00 Neu
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+
+proc hs_t actblocno ;sblof displof
+
+def bool lv_sim
+def string[32] lv_wzbez
+
+lv_sim=$p_sim or $p_istest
+
+;-- Auslesen programmierte T-Funktion / Werkzeugname
+if ($c_t_prog)
+   lv_wzbez=<<$c_t
+endif
+if ($c_ts_prog)
+   lv_wzbez=$c_ts
+endif
+
+;-- T0 programmiert
+if (lv_wzbez=="0")
+    lv_wzbez=""
+endif
+
+
+
+m17
+

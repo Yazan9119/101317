@@ -1,0 +1,146 @@
+;******************************************
+; Zyklus: HS RECOVER
+; - Kanal 1: Wiederherstellung Zustand
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Auslesen und Setzen von Einstellung und 
+; des Steuerungsstatus
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus 
+;           HS_RECOVER Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hs_recover actblocno ;sblof displof
+
+def int lv_error,ld_ncbag,ld_bag,ld_bag_fct1,ld_bag_fct2,ld_wp_fct,ld_beazu,lv_tno,lv_tmnois,lv_t_spi,lv_t_pos,lv_wz_in_mt
+def int lv_adr,lv_anz_d,lv_i,lv_dnr
+def bool lv_spi_bp,lv_bp_spi,lv_async,ld_error,lv_step_reset,lv_sim,lv_switch
+def real lv_wzl,lv_wzd,lv_c_plus,lv_c_minus,lv_y_plus,lv_y_minus,lv_z_plus,lv_z_minus
+
+if ($p_channo==1)
+   ;-- Anweisungen Kanal 1
+   if (gd_cmvm_mode==1) or $p_sim or $p_istest
+      lv_sim=true
+   endif
+ 
+   if (not(gd_ax_soll)) and (comp_mess_enabled or comp_basis_enabled)
+      setal(67180);ITC nicht aktiv
+   endif
+   
+   if not(gd_ax_soll)
+      ;-- Achskonfiguration entspricht nicht dem Sollzustand
+	  si_wzw_stat=-99
+      setal(67178)
+      ret
+   endif
+
+   ;-- Satzsuchlauf aktiv
+   if ($p_prog_event==5) gotof hl_bea
+
+   ;Maschinenmasssystem anwählen
+   execstring(gd_select_scaling_system)
+
+   if not lv_sim
+     ;Werkzeugverwaltung restaurieren
+     hs_recover_wzv
+
+   endif
+   
+   ;-- Werkzeug in Spindel   
+   lv_tno=$tc_mpp6[9998,1]
+   lv_t_spi=lv_tno
+   
+   ;Schneidenanwahl restaurieren
+   if lv_t_spi>0 
+      if ($p_tool>0)
+         d=$p_tool
+      endif
+   endif
+
+   ;Grenzdrehzahl aktivieren
+   hs_grdrz(lv_t_spi)
+
+   ;NC-Reset oder Hochlauf
+   if ($p_prog_event==3) or ($p_prog_event==4)
+      if (gd_ssl_tci>0)
+         gd_ssl_tci=0
+      endif
+      if ($mc_tool_carrier_reset_value>0)
+         $mc_tool_carrier_reset_value=0
+      endif
+      if ($p_s_type[$p_msnum]>1) ;SVC
+         s0 
+      endif
+   endif
+
+hl_bea:
+   ;Betriebsarten
+   if (loaddyn_enabled)
+      ld_ncbag=ib_ncbag ld_bag=ib_bag ld_bag_fct1=ib_bag_fct1 ld_bag_fct2=ib_bag_fct2 ld_wp_fct=ib_wp_fct lv_step_reset=i_step_reset gd_op_index1=ib_op_index1 gd_op_index_finished1=i_op_index_finished1 gv_loaddyn_axes_select=nb_loaddyn_axes_select gv_loaddayn_axes_meas=nb_loaddyn_axes_meas
+   else
+      ld_ncbag=ib_ncbag ld_bag=ib_bag ld_bag_fct1=ib_bag_fct1 ld_bag_fct2=ib_bag_fct2 ld_wp_fct=ib_wp_fct lv_step_reset=i_step_reset gd_op_index1=ib_op_index1 gd_op_index_finished1=i_op_index_finished1
+   endif
+   gd_auto=((ld_ncbag b_and 'b10')>0) gd_mda=((ld_ncbag b_and 'b100')>0) gd_jog=((ld_ncbag b_and 'b10000')>0)
+   gd_vk=((ld_bag b_and 'b1')>0) gd_eb=((ld_bag b_and 'b10')>0) gd_es=((ld_bag b_and 'b100')>0) gd_er=((ld_bag b_and 'b1000')>0)
+ 
+   ld_beazu=gm_beazu gd_wp_id1=id_wp_id1 gd_wp_typ1=iw_wp_typ1 gd_wp_present1=ib_wp_present1 gd_wp_io1=ib_wp_io1 gd_wp_meas1=ib_wp_meas1 gd_wp_nio_processed1=ib_wp_nio_processed1 gd_wp_oversize_cut1=i_wp_oversize_cut1 
+
+   gd_leert=((ld_bag_fct1 b_and 'b10')>0) gd_trazyk=((ld_bag_fct1 b_and 'b100')>0) gd_beazyk=((ld_bag_fct1 b_and 'b1000')>0) gd_gstf=((ld_bag_fct1 b_and 'b10000')>0)
+   gd_bahnf=((ld_bag_fct2 b_and 'b1')>0) gd_meas_device=((ld_bag_fct2 b_and 'b10')>0) gd_cont_run=((ld_bag_fct2 b_and 'b100')>0) gd_manload=((ld_bag_fct2 b_and 'b1000')>0) gd_wup=((ld_bag_fct2 b_and 'b1000000')>0) gd_prod_start=((ld_bag_fct2 b_and 'b10000000')>0)
+   gd_wp_raw=ld_beazu b_and 'b1' gd_wp_part_machined=ld_beazu b_and 'b10' gd_wp_finished=ld_beazu b_and 'b100'
+   gd_wp_clamped=((ld_wp_fct b_and 'b1')>0) gd_wp_released=((ld_wp_fct b_and 'b100')>0) gd_wp_location_check_io=((ld_wp_fct b_and 'b10000')>0) gd_wp_location_check_nio=((ld_wp_fct b_and 'b100000')>0)
+ 
+   
+   ;-- Bei Satzsuchlauf ans Ende springen
+   if ($p_prog_event==5) gotof hl_end
+
+   
+   if (ld_bag_fct1 or ld_bag_fct2)
+      gd_bea_start=false
+   else
+      gd_bea_start=true
+   endif
+ 
+   ;Tiefenmerker rücksetzen
+   if (lv_step_reset==true)
+      sr_step=0 sr_step1=0 sr_step2=0
+   endif
+ 
+   ;Statusvariablen
+   cv_reset_state=-1 ;Reset
+   cv_ref_state=-1 ;Grundstellungsfahren
+
+   npbea=npbea b_and b_not 'b1' ;Betriebsartenwechselsperre aufheben
+endif
+
+npnasupk1_sema=0
+
+;Spindelbeschleunigung auf 100%
+acc[s1]=100
+
+;-- Nullpunktverschiebungen / Frames
+if (gv_g8_nr>0)
+   $p_uifr[gv_uifr_nr]=gv_uifr_frame
+   g[8]=gv_g8_nr
+   gv_g8_nr=0 gv_uifr_nr=0
+endif
+
+hl_end:
+
+ret
+
+

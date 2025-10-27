@@ -1,0 +1,31 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 467 | Last Changed Author: hin | Last Changed Date: 2023-05-15 09:38:04 +0200 (Mo, 15 Mai 2023) 
+
+;HZPR
+define pnhzprfkt         	as $a_dbb[336]                             ;HZPR Funktionen
+define pnhzpr_geber2       	as (($a_dbb[336] b_and 'b1')<>0)           ;Geber 2 anwählen
+define nphzprfkt          	as $a_dbb[337]                             ;HZPR Funktionen
+define nphzpr_geber2_akt   	as $a_dbb[337]=$a_dbb[337] b_or 'b1'       ;Geber 2 aktiv
+
+;Ghostwerkzeuge
+define pnghost            as $a_dbb[338]                             ;Ghostwerkzeuge   
+define pnghostpruef_erf    as (($a_dbb[338] b_and 'b1')<>0)           ;Ghostwerkzeuge Prüfung erforderlich  
+define pnghostpruef_angef  as (($a_dbb[338] b_and 'b10')<>0)          ;Ghostwerkzeuge Prüfung angefordert
+
+;WZW-Schnittstelle NC->PLC
+define npwzw_spz          as $a_dbb[371] 
+define npwz_l              as $a_dbb[371] ='b1'                       ;Werkzeug in Spindel lösen
+define npwz_sp             as $a_dbb[371] ='b10'                      ;Werkzeug in Spindel spannen
+define gm_wz_gl               as (($a_dbb[374] b_and 'b1')<>0)           ;Werkzeug gelöst
+define gm_wz_gsp              as (($a_dbb[374] b_and 'b10')<>0) and ((($a_dbb[374] b_and 'b1000000')<>0) or ((($mn_user_data_hex[32] b_and 'b10')==0)and(($mn_user_data_hex[33] b_and 'b100')==0))) ;Werkzeug gespannt und Vorverriegelung entriegelt
+define gm_wz_spi_gsp          as (($a_dbb[374] b_and 'b10')<>0) and ((($a_dbb[374] b_and 'b1000000')<>0) or ((($mn_user_data_hex[32] b_and 'b10')==0)and(($mn_user_data_hex[33] b_and 'b100')==0))) ;Werkzeug in Spindel gespannt und Vorverriegelung entriegelt
+
+define pnwzw_zust2        as $a_dbb[375]
+define pnlpos_wzw          as (($a_dbb[375] b_and 'b1')<>0)           ;Verschiebeeinrichtung am BP, bzw. Lader auf WZW-Pos
+define pnkoe_bp            as (($a_dbb[375] b_and 'b10')<>0)          ;Köcher auf BP
+define pnlekoe_bp          as (($a_dbb[375] b_and 'b100')<>0)         ;Leerer Köcher auf BP
+define pnkoe_mag           as (($a_dbb[375] b_and 'b1000')<>0)        ;Verschiebeeinrichtung im Magazin
+define pncm_tlgpos         as (($a_dbb[375] b_and 'b10000')<>0)       ;Kettenmagazin Achse ist auf Teilungsposition (XHD)
+
+m30
+

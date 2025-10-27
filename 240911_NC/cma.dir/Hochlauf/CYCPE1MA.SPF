@@ -1,0 +1,52 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 499 | Last Changed Author: stj | Last Changed Date: 2023-05-26 11:32:47 +0200 (Fr, 26 Mai 2023) 
+def int lv_i,lv_tno_spi
+
+if ($p_prog_event==5)
+ newconf
+ getexet(lv_tno_spi,,"S")
+ hs_grdrz(lv_tno_spi)
+ if (gd_ax_c_vorh)
+  hs_head_lim(lv_tno_spi)
+ endif
+ gd_ssl_tci=0
+ if (($mn_user_data_hex[6] b_and 'b1')==0)
+  if (_E_JS_PRG)
+   t=_E_T_NEW
+  endif
+  hs_search
+ else
+  if (_E_JS_PRG==false)
+   if ($p_searchl==1) ;Satzsuchlauf ohne Berechnung
+    hs_search
+   endif
+   gd_ssl_wpfr=$p_wpframe
+   gd_ssl_partfr=$p_partframe
+   gd_ssl_tci=$p_tc
+   if ($p_tc>0)
+    gd_ssl_tc_ang1=$p_tcang[1]
+    gd_ssl_tc_ang2=$p_tcang[2]
+   endif
+   ;gd_ssl_pframe=$p_pframe
+   
+   for lv_i=1 to 64
+    cd_ssl_g[lv_i]=$p_gg[lv_i]
+   endfor
+   ;g500
+   stopre
+  endif
+  ;Planzug
+  gd_ssl_geo_uslide=false
+  if (pze_enabled)
+   if ($p_actgeoax[1]==U)
+    gd_ssl_geo_uslide=true
+   endif
+  endif
+ endif
+ if (loaddyn_enabled)
+  hs_autoset_search
+ endif
+endif
+ret
+
+

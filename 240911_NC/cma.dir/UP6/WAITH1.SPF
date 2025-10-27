@@ -1,0 +1,110 @@
+;******************************************
+; Zyklus: WAITH1
+; - Kanal 1: Warten bis Winkelkopf lösen 
+;            beendet
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Eine mit ROTHA gestartete asynchrone 
+; Positionierung abwarten
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus WAITH1
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+PROC waith1 ;displof
+
+def int lv_cmdaxdir
+
+h430
+stopre
+
+if ((md_p2nuni_tcmode<>66) and ($p_search==0) and ($p_sim==0))
+   hs_fehler(67900) ;FM: alt=67039
+   gotof hl_end
+endif
+
+if (gd_uni_ah_rotact<>1) 
+   hs_fehler(67900) ;FM: alt=67040
+   gotof hl_end
+endif
+gd_uni_ah_rotact=2
+
+;-- Koordinatensystem drehen und verschieben
+U_CALCH(2,66,gd_uni_ah_newangle,$P_ToolL[1])
+
+gd_uni_ah_actpos=gd_uni_ah_newangle
+
+;-- Aktueller=Vorgabe-Winkel oder Satzuchlauf oder Simulation -> Zyklusende
+if (gd_uni_ah_spipos==gd_uni_ah_newangle) or ($p_search==1) or ($p_sim==1) gotof hl_end
+
+if gd_uni_ah_rotstat<>2
+   hs_fehler(67900) ;FM: alt=67041
+   gotof hl_end
+endif
+
+;Synchronaktion 3 beenden,
+;Warten bis Spindel positioniert (asynchron in ROTHA gestartet)
+cancel(3)
+waits(1)
+
+g153 spos[1]=dc(gd_uni_ah_spipos)
+;-- H526: Winkelkopf/Schutzring von Spindel ablegen
+;   H527: Prüfen, ob Winkelkopf / Schutzring durch Spindel abgelegt
+;   H502: Vorschub-Beinflussung einschalten
+h526 h527 h502
+
+;Vorschub und Beschleunigung Spindel anpassen
+fa[S1]=7500 acc[S1]=10
+
+;--H-Funktion H4xxxx für Speicher aktuelle Position Winkelkopf
+h=(round(gd_uni_ah_newangle*10)+40000)
+
+;-- H500: Umschalten auf Parametersatz für Winkelkopf drehen
+;   H436: Restweg löschen Kanal 1 freigeben
+h500 h436
+
+;-- Abhängig von notwendigem Verfahrweg und Positionierrichtung den Weg und die Axrichtung bestimmen
+if ((gd_uni_ah_newangle-gd_uni_ah_actpos>0) and (gd_uni_ah_newangle-gd_uni_ah_actpos<=180)) or ((gd_uni_ah_actpos-gd_uni_ah_newangle>0) and (gd_uni_ah_actpos-gd_uni_ah_newangle>=180))
+   if (gd_uni_ah_rotdir ==1)
+      lv_cmdaxdir=1
+      g153 spos[1]=acp(gd_uni_ah_newangle)
+   else
+      lv_cmdaxdir=0
+      g153 spos[1]=acn(gd_uni_ah_newangle)
+   endif
+else
+   if ((gd_uni_ah_newangle-gd_uni_ah_actpos>0) and (gd_uni_ah_newangle-gd_uni_ah_actpos>180)) or ((gd_uni_ah_actpos-gd_uni_ah_newangle>0) and (gd_uni_ah_actpos-gd_uni_ah_newangle<180))
+      if (gd_uni_ah_rotdir ==1)
+         lv_cmdaxdir=0
+         g153 spos[1]=acn(gd_uni_ah_newangle)
+      else
+         lv_cmdaxdir=1
+         g153 spos[1]=acn(gd_uni_ah_newangle)
+      endif
+   endif
+endif
+
+;-- Synchronaktion einrichten
+id=3 when ($aa_s[1]==0) and ($aa_im[C1]==$AC_PARAM[1]) and (pnuni_in_fct_deldstgo==0) do h540 h566 h476
+
+hl_end:
+=lv_cmdaxdir
+
+h470
+m17
+
+
+

@@ -1,0 +1,26 @@
+;VERSION: 03.06.00
+;Last Changed Rev: 5974 | Last Changed Author: hin | Last Changed Date: 2022-06-01 11:50:57 +0200 (Mi, 01 Jun 2022) 
+
+def nck int  gd_uni_ah_rotstat		;Winkelkopf: Status (alt: $AC_MARKER[2])
+def nck int  gd_uni_ah_rotact		;Winkelkopf: Drehung läuft / aktiv  (alt: $AC_MARKER[1])
+def nck int  gd_uni_ah_rotdir       ;Winkelkopf: Drehrichtung (alt: $AC_MARKER[6])
+def nck int  gd_uni_ah_cmddir       ;Winkelkopf: Kommando Achsrichtung
+
+def nck real gd_uni_ah_newangle		;Winkelkopf: Vorgabewinkel (alt: $AC_PARAM[1])
+def nck real gd_uni_ah_spipos		;Winkelkopf: Richtposition für Spindel (alt: $AC_PARAM[0])
+def nck real gd_uni_ah_actpos       ;Winkelkopf: Aktuelle Position  (alt: $AC_PARAM[2])
+
+def nck int gd_uni_frame_act	    ;Verschiebung aktiv (alt: $AC_MARKER[0]}
+
+def nck int gd_uni_tc_mode			;Werkzeugwechselmodus Spindel oder Winkelkopf (alt: $AC_MARKER[3])
+
+
+
+def nck real Uni[200]
+def nck string[32] UniS[25]
+def nck real tmpR[10]
+def nck int tmpI[10]
+
+m30
+
+

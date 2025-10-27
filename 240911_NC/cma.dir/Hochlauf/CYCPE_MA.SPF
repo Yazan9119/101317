@@ -1,0 +1,338 @@
+;******************************************
+; Zyklus: CYCPE_MA 
+; - Kanal 1/2: ProgEvents auswerten
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; ProgEvents der Steuerung auswerten und 
+; entsprechend abarbeiten
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus CYCPE_MA
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc cycpe_ma actblocno ;sblof displof
+def int  lv_plnr,lv_g_n
+def int lv_tnr,lv_duplonr
+def string[32] lv_tool_name
+def bool lv_error,lv_sim
+
+;--------
+; Kanal 2
+;--------
+
+if ($p_channo==2)
+   ;hs_wmr_fehler(,,"*** cycpe_ma *************************************",lv_error)
+   ;hs_wmr_fehler(,,"    $p_prog_event="<<$p_prog_event,lv_error)
+   cycpe_ma_ch2
+   ret
+endif
+
+
+;--------
+; Kanal 1
+;--------
+
+
+;-- Simulation aktiv
+if ($mn_sim_environment==0)
+   gd_cmvm_mode=0
+endif
+if (gd_cmvm_mode==1) or $p_sim or $p_istest
+   lv_sim=true
+endif
+
+;sblof 
+goto "hl_prog_ev"<<$p_prog_event
+
+
+;-----------------------------------
+; ASUP oder Unterprogramm
+;-----------------------------------
+hl_prog_ev0:
+
+if cv_init_state<>99
+   ;NC-Hochlauf wurde nicht erfolgreich durchlaufen
+   setal(66103)
+endif
+g40
+if (syg_bm[0]) gotof hl_zyk7
+
+hl_wait1:
+
+if npnasupk1_sema==0 gotob hl_wait1
+
+npnasupk1_sema=0
+when n_asup_k1==1 do n_asupout_k1=0 
+g4f0
+
+;-- Sprungverteiler ASUPs
+gotoc "HL_ZYK"<<pnocodeasup
+
+;-- Programmierfehler - Kein Code für ASUP übergeben 
+setal(66004,"10")
+ 
+;--Unterprogrammaufruf
+HL_ZYK0: 
+;###keine Funktion angewählt###  
+gotof hl_end 
+
+;--Einrichtfunktion / Handsteuerfunktion
+HL_ZYK1: 
+hs_setu(pnasuppara1)
+gotof hl_end
+
+;--Grundstellung anfahren / Home
+HL_ZYK2: 
+
+hs_recover
+if ($mcs_function_mask_tech b_and 'h400')
+   if (npturn_akt==true)
+      setal(66186) ;Maschine im Drehkkordinatensystem
+   endif
+endif 
+  
+cs_home(1) ;Aufrufparameter nur übergangsweise gesetzt, bis $a_dbb[44] von PLC versorgt wird!!!
+gotof hl_end
+
+;-- Palettenwechsel
+HL_ZYK3: 
+
+hs_recover
+hs_wpc
+gotof hl_end
+
+;-- Reserve  
+HL_ZYK4: 
+  ;###keine Funktion angewählt###  
+gotof hl_end
+
+;-- Magazinreferenzlauf
+HL_ZYK5: 
+
+;!!!GSN hs_recover
+;!!!GSN cs_m_ref
+gotof hl_end
+
+;-- Werkzeugbereitstellung wiederholen
+hl_zyk6:
+
+$p_vditcp[0]=$p_vditcp[0] b_or 'b1000000'
+if gv_tno>0
+   lv_tool_name=$tc_tp2[gv_tno]
+   gv_tno=-1
+   cs_tp(lv_tool_name)
+else
+   if gv_tno==0
+      gv_tno=-1
+      cs_tp
+   else
+;    setal(66500);Bereitstellung kann nicht wiederholt werden
+   endif
+endif
+
+if npnbst_wdh==1
+   npnbst_wdh=0
+endif
+reposa
+gotof hl_end
+
+
+;-- Ausweichstrategie
+hl_zyk7: 
+
+syg_bm[0]=0
+;!!!GSN  hs_escev
+;!!!GSN    reposa
+gotof hl_end
+
+;-- Dynamikumschaltung
+hl_zyk8:
+  hs_recover
+  reposa
+  gotof hl_end
+
+;-- Voranwahl beladungsabhängige Maschinendynamik 
+hl_zyk9:
+  
+if (loaddyn_enabled)
+   sb_loaddyn=0
+   cs_autoset("9999")
+   hs_loaddyn_pres
+endif
+gotof hl_end
+
+;-- Spindel Beladen
+hl_zyk10: 
+
+lv_tnr=pnasuppara1+pnasuppara2*256
+lv_tool_name=$tc_tp2[lv_tnr] lv_duplonr=$tc_tp1[lv_tnr]
+cs_tp(lv_tool_name,lv_duplonr)
+m6
+gotof hl_end
+
+;-- Spindel Entladen
+ hl_zyk11:
+  
+t0 m6
+gotof hl_end
+
+
+
+;-----------------------------------
+; NC-Start
+;-----------------------------------
+hl_prog_ev1:
+
+sblon
+if (cv_init_state<>99)
+   setal(66103);NC-Hochlauf wurde nicht erfolgreich durchlaufen
+endif
+ 
+if ((syg_im[12]<>-1)or(syg_im[13]<>-1)) and (not lv_sim)
+   ;Werkzeugverwaltung inkonsistent
+   setal(66108)
+endif
+
+;!!!GSN  waitp(ct1) ;Aus WZW in Nc-Start verlagert.
+
+if ($p_channo==1)
+   ;_Anweisungen Kanal 1     
+   hs_recover
+
+   ;!!!GSN   if (loaddyn_enabled)
+   ;!!!GSN    cs_autoset("9999")
+   ;!!!GSN   endif
+  
+   if (gd_vk)and(gd_bea_start==true) gotof hl_start
+   
+   if (gd_gstf) or (gd_bahnf);Grundstellungsfahrt/Bahnfahrt
+      ret
+   endif
+   if (gd_leert) or (gd_cont_run)
+      $a_monifact=0
+   endif
+  
+hl_start:
+
+   if (gd_auto)
+      ;-- Betriebsart "Automatik" aktiv
+      
+      ; USER_DATA_HEX[70].0 = Ohne Palettenverwaltung
+      if (($mn_user_data_hex[70] b_and 'b1')==0) 
+         ;Palettenverwaltung aktiv
+         ;Bearbeitungsschritte abhängig vom Status setzen
+   	  if (gd_wp_raw==true)
+            sr_step=0 sr_step1=0 sr_step2=0
+         endif
+         
+   	  ; USER_DATA_HEX[55].0 = Maschine mit Palettenspeicher (Fastems)
+   	  if (($mn_user_data_hex[55] b_and 'b1')==0)
+   	     ;Kein Palettenspeicher vorhanden
+            if ((gd_wp_present1<>0) and (gd_wp_io1==0)) or ((gd_wp_present1==0) and ((gd_er==false) or (gd_autom_bed==false))) 
+               ;Werkstück nicht i.o. oder kein Werkstück vorhanden
+   			sr_step=998 sr_step1=0 sr_step2=0
+            endif
+            if (gd_op_index_finished1) and not (i_cont_run)
+               ;Werkstück fertig und kein Dauerlauf
+   			sr_step=999 sr_step1=0 sr_step2=0
+            endif 
+         endif
+      endif
+   endif
+   
+   
+   ;Defaultparametersatz Temperaturkompensation anwählen
+   when true do syg_im[29]=$mn_user_data_int[137]
+   
+   gotof hl_end
+else
+   ;_Anweisungen Kanal 2     
+   hs_recover
+endif
+gotof hl_end
+
+;-----------------------------------
+; M30 or NC-Reset
+;-----------------------------------
+hl_prog_ev2:
+hl_prog_ev3:
+
+if (($a_dbb[190] b_and 'b1')==0) ;Masterreset
+   stopre
+   cv_reset_state=1
+   hs_recover
+endif 
+gotof hl_end
+
+;-----------------------------------
+; Steuerungs-Hochlauf
+;-----------------------------------
+hl_prog_ev4:
+
+stopre
+cv_init_state=1
+hi_init
+gotof hl_end
+
+;-----------------------------------
+; Satzsuchlauf
+;-----------------------------------
+hl_prog_ev5:
+
+if not(($mn_user_data_hex[6] b_and 'b1')==0)
+   if (_E_JS_PRG==false)
+      $p_partframe=gd_ssl_partfr
+      $p_partfr=$p_partframe
+      $p_wpframe=gd_ssl_wpfr
+      $p_wpfr=$p_wpframe
+
+      ;-- Nullpunktverschiebung
+	  if ($p_gg[8]<>cd_ssl_g[8])
+         lv_g_n=cd_ssl_g[8]
+         g[8]=lv_g_n
+      endif
+
+   if (gd_ssl_tci>0)
+    $tc_carr13[gd_ssl_tci]=gd_ssl_tc_ang1
+    $tc_carr14[gd_ssl_tci]=gd_ssl_tc_ang2
+    lv_g_n=cd_ssl_g[42]
+    tcarr=gd_ssl_tci g[42]=lv_g_n
+    $mc_tool_carrier_reset_value=gd_ssl_tci
+   endif
+   
+   if ($p_gg[52]<>cd_ssl_g[52])
+    lv_g_n=cd_ssl_g[52]
+    g[52]=lv_g_n
+   endif
+   if ($p_gg[53]<>cd_ssl_g[53])
+    lv_g_n=cd_ssl_g[53]
+    g[53]=lv_g_n
+   endif
+  endif
+  
+  ;Planzug
+  if (gd_ssl_geo_uslide==true)
+;   cs_u_slide
+  endif
+  gotof hl_end
+ 
+ endif
+
+hl_end:
+ret
+
+

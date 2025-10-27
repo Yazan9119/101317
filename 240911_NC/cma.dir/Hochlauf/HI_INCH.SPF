@@ -1,0 +1,169 @@
+;******************************************
+; Zyklus: HI_INCH
+; - Kanal 1: Hochlauf Umschaltung Inch/Metr.
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Umschalten des Maßsystem zwischen Inch und 
+; Metrisch. Beim Hochlauf werden die Variablen
+; mit Einheiten entsprechend umgerechnet.
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_INCH
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_inch
+
+;Faktor Masssystem ermitteln
+gd_fact_metr_inch_mm =1
+gd_fact_metr_inch_m=1
+gd_fact_metr_lb_kg=1
+gd_select_scaling_system="G710"
+gd_scaling_system_is_metric=$MN_SCALING_SYSTEM_IS_METRIC
+$mc_gcode_reset_values[12]=4
+if not($MN_SCALING_SYSTEM_IS_METRIC)
+   if $mn_user_data_hex[5] b_and 'B1000'==0
+      ;-- Option Umschalten auf Inch nicht vorhanden
+	  $MN_SCALING_SYSTEM_IS_METRIC=1
+      msg("Option US customary units")
+      setal(66008)
+   else
+      ;-- Umschaltung auf Inch - Umrechnungsfaktoren bestimmen
+	  gd_fact_metr_inch_mm =1/$MN_SCALING_VALUE_INCH
+      gd_fact_metr_inch_m=1000/$MN_SCALING_VALUE_INCH
+      gd_fact_metr_lb_kg=1/0.45359237
+      gd_select_scaling_system="G700"
+      $mc_gcode_reset_values[12]=3
+   endif
+endif
+execstring(gd_select_scaling_system)
+
+
+;!!!GSN: Festlegen was übernommen werden muss.
+ret
+
+
+;Maschinendatan mit Einheiten
+gd_user_data_int_70 =$mn_user_data_int[70] *gd_fact_metr_inch_mm 
+gd_user_data_int_71 =$mn_user_data_int[71] *gd_fact_metr_inch_mm 
+gd_user_data_int_72 =$mn_user_data_int[72] *gd_fact_metr_inch_mm 
+gd_user_data_int_75 =$mn_user_data_int[75] *gd_fact_metr_inch_mm 
+gd_user_data_int_76 =$mn_user_data_int[76] /gd_fact_metr_inch_mm 
+gd_user_data_int_77 =$mn_user_data_int[77] *gd_fact_metr_inch_mm 
+gd_user_data_int_79 =$mn_user_data_int[79] *gd_fact_metr_inch_mm 
+gd_user_data_int_80 =$mn_user_data_int[80] *gd_fact_metr_inch_mm 
+gd_user_data_int_87 =$mn_user_data_int[87] *gd_fact_metr_inch_mm 
+gd_user_data_int_89 =$mn_user_data_int[89] *gd_fact_metr_inch_mm 
+gd_user_data_int_91 =$mn_user_data_int[91] *gd_fact_metr_inch_mm 
+gd_user_data_int_92 =$mn_user_data_int[92] *gd_fact_metr_inch_mm 
+gd_user_data_int_93 =$mn_user_data_int[93] *gd_fact_metr_inch_mm 
+gd_user_data_int_94 =$mn_user_data_int[94] *gd_fact_metr_inch_mm 
+gd_user_data_int_95 =$mn_user_data_int[95] *gd_fact_metr_inch_mm 
+gd_user_data_int_96 =$mn_user_data_int[96] *gd_fact_metr_inch_mm 
+if $mn_user_data_int[106]<>9999
+ gd_user_data_int_106=$mn_user_data_int[106]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_int_106=$mn_user_data_int[106] 
+endif
+gd_user_data_int_146=$mn_user_data_int[146]*gd_fact_metr_inch_mm 
+gd_user_data_int_200=$mn_user_data_int[200]*gd_fact_metr_inch_mm 
+gd_user_data_float_4=$mn_user_data_float[4]*gd_fact_metr_inch_mm 
+gd_user_data_float_5=$mn_user_data_float[5]*gd_fact_metr_inch_mm 
+if $mn_user_data_float[6]<>9999
+ gd_user_data_float_6=$mn_user_data_float[6]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_6=$mn_user_data_float[6]
+endif
+if $mn_user_data_float[8]<>9999.999
+ gd_user_data_float_8=$mn_user_data_float[8]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_8=$mn_user_data_float[8]
+endif
+gd_user_data_float_10=$mn_user_data_float[10]*gd_fact_metr_inch_mm 
+gd_user_data_float_18=$mn_user_data_float[18]*gd_fact_metr_inch_mm 
+gd_user_data_float_19=$mn_user_data_float[19]*gd_fact_metr_inch_mm 
+if $mn_user_data_float[20]<>9999
+ gd_user_data_float_20=$mn_user_data_float[20]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_20=$mn_user_data_float[20]
+endif
+if $mn_user_data_float[21]<>9999
+ gd_user_data_float_21=$mn_user_data_float[21]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_21=$mn_user_data_float[21]
+endif
+if $mn_user_data_float[22]<>9999
+ gd_user_data_float_22=$mn_user_data_float[22]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_22=$mn_user_data_float[22]
+endif
+if $mn_user_data_float[23]<>9999
+ gd_user_data_float_23=$mn_user_data_float[23]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_23=$mn_user_data_float[23]
+endif
+if $mn_user_data_float[24]<>9999
+ gd_user_data_float_24=$mn_user_data_float[24]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_24=$mn_user_data_float[24]
+endif
+if $mn_user_data_float[25]<>9999
+ gd_user_data_float_25=$mn_user_data_float[25]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_25=$mn_user_data_float[25]
+endif
+if $mn_user_data_float[26]<>9999
+ gd_user_data_float_26=$mn_user_data_float[26]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_26=$mn_user_data_float[26]
+endif
+if $mn_user_data_float[27]<>9999
+ gd_user_data_float_27=$mn_user_data_float[27]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_27=$mn_user_data_float[27]
+endif
+if $mn_user_data_float[28]<>9999
+ gd_user_data_float_28=$mn_user_data_float[28]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_28=$mn_user_data_float[28]
+endif
+if $mn_user_data_float[29]<>9999
+ gd_user_data_float_29=$mn_user_data_float[29]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_29=$mn_user_data_float[29]
+endif
+if $mn_user_data_float[30]<>9999
+ gd_user_data_float_30=$mn_user_data_float[30]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_30=$mn_user_data_float[30]
+endif
+if $mn_user_data_float[31]<>9999
+ gd_user_data_float_31=$mn_user_data_float[31]*gd_fact_metr_inch_mm 
+else
+ gd_user_data_float_31=$mn_user_data_float[31]
+endif
+gd_user_data_float_32=$mn_user_data_float[32]*gd_fact_metr_inch_mm 
+gd_user_data_float_33=$mn_user_data_float[33]*gd_fact_metr_inch_mm 
+gd_user_data_float_34=$mn_user_data_float[34]*gd_fact_metr_inch_mm 
+
+
+
+
+
+
+
+ret
+

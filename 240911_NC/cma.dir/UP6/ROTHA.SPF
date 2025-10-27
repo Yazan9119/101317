@@ -1,0 +1,119 @@
+;******************************************
+; Zyklus: ROTHA
+; - Kanal 1: Winkelkopf asynchron 
+;            positionieren
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Winkelkopf wird asynchron auf den 
+; vorgegebenen Winkel positioniert.
+; Während der Positionierung können
+; Achsen verfahren werden.
+; Es muss dann mit WAITH1 und WAITH2 auf das
+; Ende der Positionierung gewartet werden
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus ROTHA
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_newangle: Vorgabewinkel Winkelkopf
+; - lv_x_shift: Verschiebung X-Achse
+; - lv_y_shift: Verschiebung Y-Achse
+; - lv_z_shift: Verschiebung Z-Achse
+;
+;******************************************
+
+PROC rotha(real lv_newangle, real lv_x_shift, real lv_y_shift, real lv_z_shift) ;displof
+
+def real lv_actangle, lv_tmpr1, lv_tmpr2
+def real lv_ah_posacc
+
+;-- Werte aus globalen Parametern holen
+lv_ah_posacc=Uni[10]  ;Positioniergenauigkeit 2,5° / 5°
+
+h430
+stopre
+if ((md_p2nuni_tcmode<>66) and ($p_search==0) and ($p_sim==0))
+   hs_fehler(67900) ;FM: alt=67036
+   gotof hl_end
+endif
+
+if (gd_uni_ah_rotstat<>0)
+   hs_fehler(67901) ;;FM: alt=67037
+   gotof hl_end
+endif
+
+;Spindel mit Drehzahl 0 einschalten
+s1=0 m1=3
+
+;Zyklus Positionieren Winkelkopf aktiv
+h516 
+
+;-- Vorgabewinkel prüfen
+if (lv_newangle<-360) or (lv_newangle>=360.0)
+   ;Vorgabewinkel nicht im erlaubten Bereich
+   hs_fehler(67900) ;FM: alt=67038
+   gotof hl_end
+endif
+
+;-- Drehrichtung und aktueller Winkel bestimmen
+gd_uni_ah_rotdir=1 lv_actangle=md_p2nuni_ah_angle
+if (lv_newangle<0)
+   ;Negativer Vorgabewinkel, Drehrichtung negativ und Winkel bezogen auf 360°
+   gd_uni_ah_rotdir=-1 lv_newangle=-lv_newangle mod 360
+endif
+
+;-- Auf Teilungsposition runden
+lv_tmpr1=lv_actangle/lv_ah_posacc lv_actangle=(round(lv_tmpr1)*lv_ah_posacc) 
+lv_tmpr1=lv_newangle/lv_ah_posacc lv_newangle=(round(lv_tmpr1)*lv_ah_posacc)
+
+;-- Koordinatensystem drehen und verschieben
+U_CALCH(1,66,lv_newangle,$P_ToolL[1])
+
+;-- Verschiebungen auf globale Parameter
+Uni[96]=lv_x_shift Uni[97]=lv_y_shift Uni[98]=lv_z_shift
+
+;-- Globale Parameter für folgende Zyklen
+gd_uni_ah_rotact=1 gd_uni_ah_rotstat=1
+gd_uni_ah_spipos=lv_actangle gd_uni_ah_newangle=lv_newangle
+
+;-- Aktueller=Vorgabe-Winkel oder Satzuchlauf oder Simulation -> Zyklusende
+if (lv_actangle==lv_newangle) or ($p_search==1) or ($p_sim==1) gotof hl_end
+
+;-- Status Positionierung
+gd_uni_ah_rotstat=2
+
+
+;-- H569: Prüfen, ob Spanner Winkelkopf eingezogen
+;   H567: Prüfen, ob Winkelkopf / Schutzring durch Spindel aufgenommen
+;   H444: Prüfen, ob Werkzeug in Spindel
+h569 h567 h444
+
+
+;-- Getriebestufe 1 anwählen, abhängig von Optionen
+if ((md_p2nuni_optmt==106) or (md_p2nuni_optmt==206) or (md_p2nuni_opt1b b_and 'H20')) and (pnuni_in_gear2act==1)
+   m41 ;Spindel Getriebestufe 1
+   m40 ;Spindel Getriebstufe automatisch auswählen
+endif
+
+
+m501  ;Umschalten Parametersatz
+m525  ;Freigabe Winkelkopf positionieren 
+
+g153 g60 sposa[1]=DC(gd_uni_ah_spipos)
+id=3 when ($aa_s[1]==0) and ($aa_im[C1]==gd_uni_ah_spipos) do h526
+
+hl_end:
+h470 
+m17
+
+
+

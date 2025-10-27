@@ -1,0 +1,417 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 1639 | Last Changed Author: stj | Last Changed Date: 2024-05-17 14:20:12 +0200 (Fr, 17 Mai 2024) 
+
+def nck int gv_tno_mymln
+def nck int gv_tno_mymln_
+
+;Statusvariable Hochlauf
+def chan int cv_init_state
+;Statusvariable Reset
+def chan int cv_reset_state
+;Statusvariable Grundstellungsfahren
+def chan int cv_ref_state
+
+;Fahrbereichseinschränkungen
+def nck real gv_fbreschr_plus[5,3]
+def nck real gv_fbreschr_minus[5,3]
+def nck bool gv_fbreschr_ignor ;Fahrbereichseinschränkungen ignorieren
+
+;Achsen
+def nck bool gd_ax_a_vorh
+def nck bool gd_ax_b_vorh ;Rundtisch vorhanden horizontalorientiert B-Achse, vertikalorientiert C-Achse
+def nck bool gd_ax_c_vorh ;C-Kopf vohanden horizontalorientiert C-Achse, vertikalorientiert B-Achse
+def nck bool gd_ax_soll
+def nck bool gd_ax_cm_vorh
+def nck bool gd_ax_z2_vorh
+def nck bool gd_part_kin       ;Tisch-Kinematik
+
+;Grundstellungsfahren/Referieren
+def nck int  gd_home[12]  ;Grundstellungsfolge
+def nck real gd_home_pos[12]  ;Positionen für Grundstellungsfahren
+def nck int  gd_chan_to_axis[31]
+
+;maschinendaten der maschine
+def nck int gd_mtyp  ;maschinentyp
+def nck int gd_mnr   ;maschinennummer
+def nck bool gd_apc
+def nck bool gd_flex_auto
+def nck bool gd_flex_standalone
+ 
+;Variablen fuer Werkzeugwechsel
+def nck int        gv_tca_duplonr
+def nck bool       gv_tp
+def nck bool       gv_tp_ret
+def nck bool       gv_tp_tmag_notpu
+def nck int        gv_tno     ;vorangewähltes WZ
+def nck int        gv_tno_alt ;T-Nr. des auszuwechselnden WZ
+def nck int        gv_d_nr    ;angewählte Schneide
+def nck int        gv_t_nr    ;T-Nummer für die GV_D_NR gilt
+def nck int        gv_d
+def nck real       gv_x ;achsen bei wzw
+def nck real       gv_y
+def nck real       gv_z
+def nck real       gv_b
+def nck int        gv_b_mode
+def nck real       gv_s
+def nck real       gv_spos
+def nck int        gv_m[5]
+def nck real       gv_a
+def nck int        gv_a_mode
+def nck real       gv_c
+def nck int        gv_c_mode
+def nck real       gv_tc_zpos
+def nck int        gv_tc_zpos_mode
+def nck bool       gv_wpspi
+def nck string[32] gv_t
+def nck bool       gv_tlpp
+def nck real       gv_ct_f
+def nck real       gv_ct_a
+def nck real       gv_zt_f
+def nck real       gv_zt_a
+def nck int        gd_tcdyn_ct_m[13]
+def nck int        gd_tcdyn_ct_v[13]
+def nck real       gd_tcdyn_ct_a[13]
+def nck int        gd_tcdyn_ct_j[13]
+def nck real       gd_tcdyn_ct_kv[13]
+def nck int        gd_tcdyn_zt_m[10]
+def nck int        gd_tcdyn_zt_v[10]
+def nck real       gd_tcdyn_zt_a[10]
+def nck real       gd_spifrei                ;X-Achse von Spindel so weit weg, dass Spindel drehen kann.
+def nck real       gd_safe_cam_tol_z
+def nck real       gd_safe_cam_pos_plus1_z
+
+
+;Medien während WZW
+def nck int        gd_media
+def nck int        gv_media
+         
+;Werkzeuge
+def chan real gd_tooll          ;Hüllkontur (Länge) des Spindelwerkzeugs
+def chan real gd_toold          ;Hüllkontur (Durchmesser) des Spindelwerkzeugs
+def nck real  gd_maxHL          ;Maximal zulässige Werkzeuglänge
+def nck real  gd_maxHD          ;Maximal zulässiger Werkzeugdurchmesser HD
+def nck real  gd_maxHH          ;Maximal zulässige Werkzeughöhe HH
+
+;Werkzeugwechsel
+def nck int  gd_wzwvseok       ;Mindestabstand Greifer von Spannposition, bei dem Verschiebeeinrichtung wegfahren darf
+def nck real gd_vpick_up_hub   ;Aushubweg Pickup
+def nck real gd_pick_up_pos[7] ;Positionen für Handpickup
+def nck real gd_pick_up_x[3]   ;Aufnahmepositionen X-Achse Pickup
+def nck real gd_pick_up_y[3]   ;Aufnahmepositionen Y-Achse Pickup
+def nck real gd_pick_up_z[3]   ;Aufnahmepositionen Z-Achse Pickup
+def nck real gd_pick_up_b[3]   ;Aufnahmepositionen B-Achse Pickup
+def nck real gd_pick_up_c1[3]  ;Aufnahmepositionen C1-Achse Pickup
+def nck real gd_pick_up_f[4]   ;Vorschübe Pickup
+def nck int  gv_tpu            ;letzte Bereitstellung kam aus Pickup
+def nck string[40] gv_pick_up_prg1;1. Programm
+def nck string[40] gv_pick_up_prg2;2. Programm
+
+def nck bool gd_wzw_scan[15,54]
+def nck bool gd_wzw_endl[14]
+
+;Bereitstellung
+def nck string[32] gv_t_bez    ;Werkzeugbezeichner der letzten Bereitstellung 
+
+;Werkzeugschaft reinigen
+def nck int gd_wzrng_wzeit      ;Wartezeit in Waschposition
+def nck real gd_wzrng_spalt      ;Abstand Köcher - WZ-Schaft während Waschen/Abblasen
+def nck real gd_wzrng_hubl       ;ZT-Hub beim Abblasen des WZ-Schafts
+def nck real gd_wzrng_hubw       ;ZT-Hub beim Ausspülen des WZ-Schafts
+def nck int gd_wzrng_anzhubl    ;Anzahl ZT-Hübe beim Abblasen
+def nck int gd_wzrng_anzhubw    ;Anzahl ZT-Hübe beim Ausspülen
+
+;Automatisches Entsorgen verschlissener Werkzeuge
+def nck int gd_n2h_Tnr_aevw     ;T-Nummer des Werkzeugs, das bei einer Bereitstellung nicht gefunden wurde 
+
+
+;SBBK
+def nck bool gv_sbbk            ;Anforderung SBBK-Messung nur wegen Kompatibilität
+def nck real gd_sbbk_tol_def    ;Defaulttoleranz für SBBK
+def nck real gv_sbbk_tol        ;programmierbare Toleranz für SBBK
+def nck real gd_sbbk_maxwzl     ;Maximale Werkzeuglänge für SBBK
+
+;IPM
+def nck int  gv_ipm_case   ;bitcodiert IPM-Ausloesegrund
+
+;Ausweichstrategie
+def nck bool       gv_aws_on     ;Ausweichstrategie ein
+def nck int        gv_aws_type   ;Ausweichstrategie überwachte Gründe
+def nck int        gv_aws_case   ;Ausweichstrategie ausgelöster Grund
+def nck string[32] gv_aws_lab    ;Ausweichlabel
+def nck bool       gv_aws_ausgl  ;Ausweichstrategie ist ausgelöst
+def nck bool       gv_aws_m64    ;Palettenzustand M64 bei Abbruch setzen
+def nck int        cv_ipm_case   ;Gründe aus IPM
+def nck int        cv_user_case  ;Grund Anwenderdefiniert
+
+;ipm:
+def nck bool       cv_ipm_on   ;wzu aktiv
+def nck int        cv_ipm_type ;bitcod. dyn. ipm-typ
+
+;Variablen, die von PWT gesetzt werden
+def nck string[78]  gv_palnv
+def nck string[78]  gv_beanv
+
+;Werkzeugschaft
+def nck int         gd_wzschaft  ;Werkzeugschaft 11=HSK63 12=HSK100 21=SK40 22=SK50 31=BT40 32=BT50
+
+;Werkzeugvermessung Renishaw
+def nck real        gd_wzvm_ymin  ;Minimalposition Y für Start Werkzugvermessung
+
+;Vertikalorientierung
+def nck axis       gd_mbasax_x     ;Maschinenachsnamen der Einheit im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_mbasax_y     ;Maschinenachsnamen des Ständers im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_mbasax_z     ;Maschinenachsnamen der Palette im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_mbasax_b     ;Maschinenachsnamen des Rundtisches im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_mbasax_a     ;Maschinenachsname der A-Achse
+def nck axis       gd_cbasax_x     ;Kanalachsnamen der Einheit im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_cbasax_y     ;Kanalachsnamen des Ständers im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_cbasax_z     ;Kanalachsnamen der Palette im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_cbasax_b     ;Kanalachsname des Rundtisches im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_cbasax_a     ;Kanalachsname der A-Achse
+def nck axis       gd_gbasax_x     ;Geometrieachsnamen der Einheit im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_gbasax_y     ;Geometrieachsnamen des Ständers im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_gbasax_z     ;Geometrieachsnamen der Palette im Heller Basissystem (Horizontalorientierung)  
+
+def nck bool gd_tem
+def nck bool gd_tem_l
+
+;Variablen für Betriebsarten
+def nck bool gd_autom_bed
+def nck bool gd_vk
+def nck bool gd_eb
+def nck bool gd_es
+def nck bool gd_er
+
+;Variablen für NC-Betriebsarten
+def nck bool gd_auto
+def nck bool gd_mda 
+def nck bool gd_jog
+
+;Variablen für Sonder-Betriebsarten
+def nck bool gd_leert   ;Leertakten
+def nck bool gd_trazyk  ;Transportzyklus
+def nck bool gd_beazyk  ;Bearbeitungszyklus
+def nck bool gd_gstf    ;Grundstellungsfahrt
+def nck bool gd_bahnf   ;Bahnfahrt
+def nck bool gd_meas_device ;Meßmittelfähigkeit
+def nck bool gd_cont_run    ;Dauerlauf
+def nck bool gd_manload ;manuelle Beladung ohne Automation
+def nck bool gd_prod_start  ;Produktionsstart
+def nck bool gd_bea_start ;Bearbeitungsstart
+def nck bool gd_wup     ;Warmlaufprogramm
+
+;Werkstückinformationen
+def nck int gd_wp_id1
+def nck int gd_wp_typ1
+def nck int gd_op_index1
+def nck int gd_wp_present1;vorh1
+def nck int gd_wp_io1
+def nck int gd_wp_meas1
+def nck int gd_wp_nio_processed1;bearb1
+def nck bool gd_op_index_finished1
+def nck bool gd_wp_oversize_cut1;aufmass1
+
+def nck bool gd_wp_raw          ;roh
+def nck bool gd_wp_part_machined;teilbearbeitet
+def nck bool gd_wp_finished     ;fertig
+
+;Werkstückspannung
+def nck bool gd_wp_clamped
+def nck bool gd_wp_released
+def nck bool gd_wp_location_check_io
+def nck bool gd_wp_location_check_nio
+
+;Drehzahl und Getriebestufe
+def nck int  gv_sgear
+def nck int  gv_sautogear
+def nck int  gv_c1_gear_step_axmode
+
+;Satzsuchlauf
+def nck  bool  gd_ssl_geo_uslide
+def nck  int   gd_ssl_tci
+def nck  real  gd_ssl_tc_ang1
+def nck  real  gd_ssl_tc_ang2
+def chan frame gd_ssl_partfr
+def chan frame gd_ssl_wpfr
+def chan frame gd_ssl_pframe
+def chan int   cd_ssl_g[65]
+
+;beladungsabhängige Maschinendynamik
+def nck int gv_loaddyn_axes_select
+def nck int gv_loaddayn_axes_meas
+
+;metrisch inch
+def nck bool gd_scaling_system_is_metric      ;Maßsystem bei Hochlauf   
+def nck real gd_fact_metr_inch_mm
+def nck real gd_fact_metr_inch_m    
+def nck real gd_fact_metr_lb_kg 
+def nck string[10]  gd_select_scaling_system     
+;Maschinendatan
+def nck real gd_user_data_int_70
+def nck real gd_user_data_int_71
+def nck real gd_user_data_int_72
+def nck real gd_user_data_int_75
+def nck real gd_user_data_int_76
+def nck real gd_user_data_int_77
+;def nck real gd_user_data_int_78
+def nck real gd_user_data_int_79
+def nck real gd_user_data_int_80
+def nck real gd_user_data_int_87
+def nck real gd_user_data_int_89
+def nck real gd_user_data_int_91
+def nck real gd_user_data_int_92
+def nck real gd_user_data_int_93
+def nck real gd_user_data_int_94
+def nck real gd_user_data_int_95
+def nck real gd_user_data_int_96
+def nck real gd_user_data_int_106
+def nck real gd_user_data_int_146
+def nck real gd_user_data_int_162
+def nck real gd_user_data_int_200
+def nck real gd_user_data_float_4
+def nck real gd_user_data_float_5
+def nck real gd_user_data_float_6
+def nck real gd_user_data_float_8
+def nck real gd_user_data_float_10
+def nck real gd_user_data_float_18
+def nck real gd_user_data_float_19
+def nck real gd_user_data_float_20
+def nck real gd_user_data_float_21
+def nck real gd_user_data_float_22
+def nck real gd_user_data_float_23
+def nck real gd_user_data_float_24
+def nck real gd_user_data_float_25
+def nck real gd_user_data_float_26
+def nck real gd_user_data_float_27
+def nck real gd_user_data_float_28
+def nck real gd_user_data_float_29
+def nck real gd_user_data_float_30
+def nck real gd_user_data_float_31
+def nck real gd_user_data_float_32
+def nck real gd_user_data_float_33
+def nck real gd_user_data_float_34
+def nck real gd_user_data_float_35
+
+def nck real gd_sw_cam_minus_pos_tab_1[8]
+def nck real gd_sw_cam_minus_pos_tab_2[8]
+def nck real gd_sw_cam_minus_pos_tab_3[8]
+def nck real gd_sw_cam_minus_pos_tab_4[8]
+def nck real gd_sw_cam_plus_pos_tab_1[8]
+def nck real gd_sw_cam_plus_pos_tab_2[8]
+def nck real gd_sw_cam_plus_pos_tab_3[8]
+def nck real gd_sw_cam_plus_pos_tab_4[8]
+
+;Autocal
+def nck int   gv_uifr_nr
+def nck int   gv_g8_nr
+def nck frame gv_uifr_frame
+
+
+;Control
+def nck int  gd_cmvm_mode
+;Serie
+if isfile("/_N_DEF_DIR/_N_MGUD_SERIE_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_SERIE_DEF"
+endif
+
+;ATC100XHD
+if isfile("/_N_DEF_DIR/_N_MGUD_ATC100XHD_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_ATC100XHD_DEF"
+endif
+
+;IPM
+if isfile("/_N_DEF_DIR/_N_MGUD_IPM_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_IPM_DEF"
+endif
+
+;Online Temperaturkompensation (Spindelwachstum)
+if isfile("/_N_DEF_DIR/_N_MGUD_SPINDLE_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_SPINDLE_DEF"
+endif
+
+;Planzug
+if isfile("/_N_DEF_DIR/_N_MGUD_USLIDE_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_USLIDE_DEF"
+endif
+
+;Regalmagazin
+if isfile("/_N_DEF_DIR/_N_MGUD_WMR_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_WMR_DEF"
+endif
+
+if isfile("/_N_DEF_DIR/_N_MGUD_ATC_WMR_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_ATC_WMR_DEF"
+endif
+
+;Drehen auf Fräsmaschine
+if isfile("/_N_DEF_DIR/_N_MGUD_TURN_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_TURN_DEF"
+endif
+
+;AutoServoTuning Aufruf aus Teileprogramm
+if isfile("/_N_DEF_DIR/_N_MGUD_ASTLOAD_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_ASTLOAD_DEF"
+endif
+
+if isfile("/_N_DEF_DIR/_N_MGUD_AST_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_AST_DEF"
+endif
+
+;Temperaturkompensation Präzission
+if isfile("/_N_DEF_DIR/_N_MGUD_OTC_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_OTC_DEF"
+endif
+
+;Werkzeugvermessung allgemein
+if isfile("/_N_DEF_DIR/_N_MGUD_WZVM_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_WZVM_DEF"
+endif
+
+;Werkzeugvermessung Renishaw
+if isfile("/_N_DEF_DIR/_N_MGUD_WZVM_REN_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_WZVM_REN_DEF"
+endif
+
+;Applikation
+if isfile("/_N_DEF_DIR/_N_MGUD_APPL_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_APPL_DEF"
+endif
+
+;Direktbeladung
+if (isfile("/_n_def_dir/_n_mgud_wpc_def"))
+ call "/_n_def_dir/_n_mgud_wpc_def"
+endif
+
+;beladungsabhängige Maschinendynamik
+if (isfile("/_n_def_dir/_n_mgud_loaddyn_def"))
+ call "/_n_def_dir/_n_mgud_loaddyn_def"
+endif
+
+;temperaturabhängige Korrektur in Linearachsen
+if (isfile("/_n_def_dir/_n_mgud_tcla_def"))
+ call "/_n_def_dir/_n_mgud_tcla_def"
+endif
+
+;H4I TO
+if isfile("/_N_DEF_DIR/_N_MGUD_TO_OPT_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_TO_OPT_DEF"
+endif
+
+;Powerskiving
+if isfile("/_N_DEF_DIR/_N_MGUD_SKIVING_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_SKIVING_DEF"
+endif
+
+;Rühreibschweißen
+if isfile("/_N_DEF_DIR/_N_MGUD_FSW_DEF")
+ call "/_N_DEF_DIR/_N_MGUD_FSW_DEF"
+endif
+
+;ADAS Compilezyklus bei Simulation
+if (isfile("/_n_def_dir/_n_ada_mgud_def"))
+ call "/_n_def_dir/_n_ada_mgud_def"
+endif
+
+
+m30
+

@@ -1,0 +1,80 @@
+;******************************************
+; Zyklus: SETZERO
+; - Kanal 1: Nullpunktverschiebung aufrufen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 10.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Aufrufen und aktivieren der Nullpunkt-
+; verschiebung. Möglich sind G54 - G59 
+; und G505 - G599.
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus SETZERO
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_offsno: Nummer der Nullpunktverschiebung
+;
+;******************************************
+
+
+proc setzero(int lv_offsno) ;displof
+
+def int lv_gnr, lv_intgnr
+def real lv_frame_s1, lv_frame_s2 
+
+lv_frame_s1 = Uni[151]  ;Nullpunkt Pendeln Seite 1
+lv_frame_s2 = Uni[152]  ;Nullpunkt Pendeln Seite 2
+
+
+;-- G-Code Nummer bestimmen aus aktueller Verschiebung 
+;   und Offset-Nummer
+if (md_p2nuni_sideosc==2)
+   ;-- Pendeln: Bearbeitungsstation 2 aktiv
+   lv_gnr=lv_frame_s2+lv_offsno
+   if ((lv_frame_s2<=57) and (lv_gnr>57))
+      lv_gnr=lv_gnr+447
+   endif
+   if ((lv_frame_s2>=505) and (lv_gnr<505))
+      lv_gnr=lv_gnr-447
+   endif
+else
+   ;-- Pendeln: Bearbeitungsstation 1 aktiv
+   lv_gnr=lv_frame_s1+lv_offsno
+   if ((lv_frame_s1<=57) and (lv_gnr>57))
+      lv_gnr=lv_gnr+447
+   endif
+   if ((lv_frame_s1>=505) and (lv_gnr<505))
+      lv_gnr=lv_gnr-447
+   endif
+endif
+
+
+;-- Aus Nullpunkt G-Code die interne Nummer bestimmen
+;   1=G54, ...., 4=G57, 5=G505, ..., 99=G599
+lv_intgnr=0
+if ((lv_gnr>=54) and (lv_gnr<=57))
+   lv_intgnr=lv_gnr-53
+endif
+if ((lv_gnr>=505) and (lv_gnr<=599))
+   lv_intgnr=lv_gnr-500
+endif
+
+if ((lv_intgnr>=1) and (lv_intgnr<=99))
+   ;-- Nullpunktverschiebung in G-Code-Gruppe 8 ausgeben
+   G[8]=lv_intgnr
+else
+   hs_fehler(67900)  ;FM:   (alt: 67048)
+endif
+
+hl_end:
+m17
+
+

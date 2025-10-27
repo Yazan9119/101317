@@ -1,0 +1,77 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 886 | Last Changed Author: hin | Last Changed Date: 2023-10-27 13:37:34 +0200 (Fr, 27 Okt 2023) 
+
+;Achsen
+def nck axis gd_5th_axis
+def nck bool gd_pcu            ;C-Kopf ist PCU
+def nck bool gd_pct            ;Tiltkopf ist PCT
+def nck bool gd_dcu            ;C-Kopf ist DCU
+def nck bool gd_dct            ;Tiltkopf ist DCT
+def nck bool gd_scu            ;C-Kopf ist SCU
+def nck bool gd_sct            ;C-Kopf ist SCT
+
+def nck real gd_f_stoer_x_plus    
+def nck real gd_f_stoer_y_minus   
+def nck real gd_f_stoer_y_minus_wz
+def nck real gd_head_lim_p[4]
+def nck real gd_head_lim_n[4]
+def nck real gd_swivel_tt_lim_p
+def nck real gd_swivel_tt_lim_n
+def nck int  gd_head_area
+
+;Werkzeugwechsel
+def nck real gd_tc_posm[7]     ;Positionen Bearbeitungsachsen für Werkzeugwechsel
+def nck real gd_ct1_pos[4,2]   ;Positionen fuer Schwenkachse TC
+def nck real gd_zt1_pos[3,2]   ;Positionen fuer Hubachse TZ
+def nck real gd_wzw_strt       ;Bahnrestweg X/Y ab der TC startet
+def nck real gd_wzw_spz_loe    ;Bahnrestweg X/Y ab dem die Spannzange löst
+def nck real gd_wzw_tol[7]     ;Toleranzen für Einleiten der nächsten Bewegung
+def nck real gd_wzw_tol_scan[4];Toleranzen für Scan/Asuführbarkeit der Bewegungen
+def nck int  gd_wzw_strt_s     ;Restweg TC beim Wegschwenken, ab dem Drehzahl wirksam wird
+def nck int  gd_wzw_strt_x     ;Restweg TC beim Wegschwenken, ab der X/Y-Achsen losfahren dürfen
+def nck int  gd_wzw_spz_mod    ;Modus Spannzange auf/zu
+def nck int  gd_wzw_spi_richt  ;Abstand den TC von Löse/Spannstellung haben muss, damit die Spindel gerichtet werden darf.
+
+;Arbeitsbereich
+def nck real gd_wa_xplus       ;Arbeitsbereich X-Plus
+def nck real gd_wa_xminus      ;Arbeitsbereich X-Minus
+def nck real gd_uebhub_x       ;Überhub X WZW
+def nck real gd_uebhub_y       ;Überhub Y WZW
+def nck bool gd_uehub_wzwYFix  ;WZW mit Überhub, Y-Achse fest
+
+;Palettenwechsel
+def nck real gd_wpc_pos[5]      ;Werkstueckwechselposition
+def nck real gd_wpc2_pos[5]      ;Werkstueckwechselposition
+def nck int  gd_w1              ;maximale WZ-Länge ohne Einschränkung für Palettenwechsel -> SPEZ.00033165
+def nck int  gd_w2              ;maximale WZ-Länge mit Einschränkung für Palettenwechsel: Leerwechsel notwendig -> SPEZ.00033165
+def nck int  gd_k2              ;X-Position für Ausweichfahrt bei Palettenwechsel mit Werkzeuglänge zwischen gd_w1 und gd_w2 -> SPEZ.00033165
+
+def nck real gd_paw_maxwzl      ;max. Werkzeuglänge für Palettenwechsel auf jeder X-Position
+def nck real gd_paw_x_ausw      ;X-Position für Ausweichfahrt bei Palettenwechsel mit Werkzeuglänge>gd_paw_maxwzl
+def nck real gd_paw_z_ausw      ;Z-Position für sicheres Drehen B-Achse (keine Kollision mit Y-Abdeckung)
+
+;Vertikalorientierung
+def nck axis       gd_mbasax_c     ;Maschinenachsnamen des Schwenkkopf im Heller Basissystem (Horizontalorientierung)  
+def nck axis       gd_cbasax_c     ;Kanalachsname des Schwenkkopf im Heller Basissystem (Horizontalorientierung)
+def nck int        gv_vertori_x    ;Orientierung X-Achse
+def nck real       gd_vertori_posh ;Position der 5.Achse für Horizontalstellung (5. Achse steht waagrecht)
+def nck real       gd_vertori_posv ;Position der 5.Achse für Horizontalstellung (5. Achse steht waagrecht)
+
+;Verfahrbereichsgrenze
+def nck real gd_wa_zplus        ;Verfahrbereichsgrenze Arbeitsraum
+def nck real gd_bz_zplus        ;Z-Position, auf der B drehen kann 
+
+;Kompensation
+def nck int  gd_tempcomp_searchrun_para       ;Angewählter Parametersatz in Satzsuchlauf
+def nck real gd_comp_autocal_lim              ;Kompensation autocal Grenzwert
+def nck real gd_comp_autocal_lim_metr         ;Kompensation autocal Grenzwert metrisch
+def nck real gd_comp_itc_lim                  ;Kompensation ITC Grenzwert
+def nck real gd_comp_z_s_lim                  ;Kompensation Z(S) Grenzwert
+
+;Spindelverlagerung durch Drehzahl
+def nck real gd_comp_z_s_factor              ;Kompensation Z(S) Faktor
+
+def nck real gd_adpt1           ;Adapterdatum in Geolänge1
+
+m30
+

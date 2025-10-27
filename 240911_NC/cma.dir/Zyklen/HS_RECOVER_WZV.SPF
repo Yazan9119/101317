@@ -1,0 +1,84 @@
+;******************************************
+; Zyklus: HS RECOVER:WZV
+; - Kanal 1: Wiederherstellung 
+;            Werkzeugverwaltung
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Auslesen und Setzen von Einstellungen und 
+; Status der Werkzeugverwaltung
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus 
+;           HS_RECOVER_WZV Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hs_recover_wzv save actblocno ;sblof displof
+
+def bool lv_error,lv_error_kvw
+def int lv_plnr,lv_anz_pok=0,lv_anz_rkk=0,lv_pok[2],lv_rkk[2],lv_zaehler,lv_cnt_mag
+def int lv_zaehler_2,lv_anzmag,lv_magnum,lv_tno
+
+;!!!GSN - Anpassungen für WZV Uniport6 hier programmieren
+
+ret
+
+if ($p_channo==1)
+   ;Magazin  prüfen, bei Kette muss letzter Magazinplatz gesperrt sein
+   if ($tc_map1[1]==1)
+      if ($tc_mpp4[1,$tc_map7[1]] b_and 'b1')==0
+         $tc_mpp4[1,$tc_map7[1]] = $tc_mpp4[1,$tc_map7[1]] b_or 'b1'
+         setal(67114);Letzter Magazinplatz wurde gesperrt
+      endif
+   endif
+
+   ;Werkzeugverwaltung prüfen
+   if (syg_im[12]<>-1)
+      if (wmr_enabled)and(not(atc_wmr_enabled))
+         if (syg_im[12]<>$tc_mpp6[9998,1])and(syg_im[12]<>$tc_mpp6[9998,2])and(syg_im[12]<>$tc_mpp6[9998,3])and(syg_im[12]<>$tc_mpp6[9998,4])
+            lv_error=true
+            setal(67112);Werkzeugverwaltung inkonsistent. Unbekannte T-Nummer
+         endif
+      else
+         if (syg_im[12]<>$tc_mpp6[9998,1])and(syg_im[12]<>$tc_mpp6[9998,2])and(syg_im[12]<>$tc_mpp6[9998,3])and(syg_im[12]<>$tc_mpp6[9998,4])and(syg_im[12]<>$tc_mpp6[1,$aa_act_index_ax_pos_no[cm]])
+            lv_error=true
+            setal(67112);Werkzeugverwaltung inkonsistent. Unbekannte T-Nummer
+         endif
+     endif
+   endif
+   
+   if (syg_im[13]<>-1)
+      if (syg_im[13]<>$tc_mpp6[9998,1])and(syg_im[13]<>$tc_mpp6[9998,2])and(syg_im[13]<>$tc_mpp6[9998,3])and(syg_im[13]<>$tc_mpp6[9998,4])
+         lv_error=true
+         setal(67112);Werkzeugverwaltung inkonsistent. Unbekannte T-Nummer
+      endif
+   endif
+   
+   if (syg_im[12]<>-1)and(syg_im[12]==syg_im[13])
+      lv_error=true
+      setal(67112);Werkzeugverwaltung inkonsistent. Unbekannte T-Nummer
+   endif
+   
+   if (lv_error)
+      ret
+   endif
+
+   if ((npswn_wzw2 b_and 'b100000001')=='b100000001') ;npswn_ct_0 and npswn_zt_0
+      syg_im[12]=-1 syg_im[13]=-1
+   endif
+endif
+
+ret
+

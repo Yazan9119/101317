@@ -1,0 +1,150 @@
+;******************************************
+; Zyklus: HI_HOME
+; - Kanal 1: Hochlauf Geberanwahl
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Hochlauf Initialisierung Geber
+; der Maschine
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_ENC
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_enc actblocno ;sblof displof
+
+def axis lv_axname
+def int lv_ax_no,lv_ax_bit,lv_ax_found
+def int lv_enc_type[2]
+def bool lv_simulator
+
+if (pnsim)
+   lv_simulator=true
+endif
+
+;-----------------------------
+;Soll Achskonfiguration prüfen
+gd_ax_soll=1
+if gd_chan_to_axis[0]==0  ;X
+   gd_ax_soll=0
+endif
+if gd_chan_to_axis[1]==0  ;Y
+   gd_ax_soll=0
+endif
+if gd_chan_to_axis[2]==0  ;Z
+   gd_ax_soll=0
+endif
+
+;-- Hüller Hille NBH
+if ((gd_mtyp >=1000) and (gd_mtyp<=1999))
+   
+   ;-- B-Achse
+   if gd_chan_to_axis[4]==0  ;B
+      gd_ax_soll=0
+   endif
+   
+   ;-- A-Achse
+   if ($mn_axconf_machax_name_tab[3]=="M_A1") and (gd_chan_to_axis[3]==0)  ;A
+      gd_ax_soll=0
+   endif
+   
+   ;C-Achse
+   if ($mn_axconf_machax_name_tab[3]=="M_C1") and (gd_chan_to_axis[3]==0)  ;A
+      gd_ax_soll=0
+   endif  
+   
+   ;-- Magazinachen
+
+   
+   
+endif
+   
+   
+endif
+
+;-- Unisign-Maschinen (z.B. Uniport)
+if ((gd_mtyp >=2000) and (gd_mtyp<=2999))
+ 
+   if gd_chan_to_axis[4]==0  ;Spi
+      gd_ax_soll=0
+   endif
+
+   ;-- X2-Achse
+   if gd_chan_to_axis[7]==0 ;X2
+      gd_ax_soll=0
+   endif
+
+   ;-- Magazinachsen
+   if gd_chan_to_axis[6]==0 ;Q4
+      gd_ax_soll=0
+   endif
+ 
+   
+endif
+
+;-----------------------------
+;Gebertypen auswerten
+npms1_anw=0 npms2_anw=0 npaktsiax=0
+lv_ax_no=0 lv_ax_found=0
+repeat
+   if (gd_chan_to_axis[lv_ax_no]>0)
+      lv_ax_found=lv_ax_found+1
+      lv_ax_bit=exp(ln(2)*lv_ax_no)
+      lv_axname=axname($mn_axconf_machax_name_tab[lv_ax_no])  
+  
+      if (($ma_ctrlout_type[0,lv_axname]>0) and (lv_simulator==false))
+         lv_enc_type[0]=$ma_enc_type[0,lv_axname] lv_enc_type[1]=$ma_enc_type[1,lv_axname]
+         if (not((lv_enc_type[0]<4)and(lv_enc_type[1]<4)and($ma_num_encs[lv_axname]==2))) ;wenn beide Geber inkrementell -> 2. Geber anwählen   (HPC-Spindel)
+            if ((lv_enc_type[0]>0)and(not(lv_enc_type[1]==4)))
+               npms1_anw=npms1_anw b_or lv_ax_bit
+            endif
+         endif
+
+         if ((lv_enc_type[0]==1)) ;incrementeller Geber
+            npms1_inc=npms1_inc b_or lv_ax_bit
+         endif
+         
+		 if ((lv_enc_type[1]>0) and ($ma_num_encs[lv_axname]>1)) ;2.geber nur auf bitleiste, wenn 2 Geber angewaehlt
+            npms2_anw=npms2_anw b_or lv_ax_bit
+         endif
+      else
+         if ($ma_num_encs[lv_axname]>0)
+            npms1_anw=npms1_anw b_or lv_ax_bit ;Geberinfo an PLC umschreiben. Bei Simulator immer Geber1 anwählen
+            npsimax=npsimax b_or lv_ax_bit
+         endif
+      endif 
+      
+	  if ($ma_ax_motion_dir[lv_axname]==1)
+         npaxmotiondir=npaxmotiondir b_or lv_ax_bit
+      endif
+   endif
+   lv_ax_no=lv_ax_no+1
+until (lv_ax_no==31)
+
+;-----------------------------
+;Ermitteln, welche Linear-Achsen 
+;im System vorhanden sind
+
+gd_ax_z2_vorh=false
+if (toupper($mn_axconf_machax_name_tab[18])=="M_Z2")
+   if (toupper($mc_axconf_chanax_name_tab[18])=="Z2")and($mc_axconf_machax_used[18]==19)
+      gd_ax_z2_vorh=true
+   endif
+endif
+
+ret
+
+

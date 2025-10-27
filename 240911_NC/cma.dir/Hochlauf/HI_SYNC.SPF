@@ -1,0 +1,48 @@
+;******************************************
+; Zyklus: HI_SYNC
+; - Kanal 1: Hochlauf Synchronaktionen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Hochlauf Initialisierung Synchronaktionen
+; im Kanal 1
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_SYNC
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_sync  save actblocno sblof displof
+;maschinenspezifische Aktionen
+def string[256] lv_befehl
+
+if ($p_channo==1)
+   ;Maschinenmasssystem anwählen
+   execstring(gd_select_scaling_system)
+
+   if (not(gd_ax_soll))
+      ret ;Aussprung, falls nicht alle Achsen angewählt
+   endif
+ 
+   ;!!!GSN Synchronaktionen etc. festlegen
+   ;ids=10xx
+   ;...
+   ;
+ 
+endif
+
+ret
+
+

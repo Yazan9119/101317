@@ -1,0 +1,106 @@
+;******************************************
+; Zyklus: U_FUNC
+; - Kanal 1/2: ASUP für diverse Funktionen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 27.08.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Asynchrones Unterprogramm mit diversen 
+; Funktionen der Maschine gestartet durch
+; PLC
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_FUNC
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+; 
+;
+; Hinweise
+; ========
+; Der Auftrag wird von der PLC durch DPRAM
+; $A_DBD[4] an den Zyklus übergeben.
+; Aufruf / Start erfolgt ebenfalls durch 
+; die PLC als ASUP
+;******************************************
+
+
+
+
+proc u_func ;displof
+
+h430
+ 
+ 
+;------------------------------------
+;Werkzeugverwaltung / Werkzeugaufruf
+if md_p2nuni_opcode b_and 'h1000000')
+   m33
+   stopre
+   
+   ;Aufgerufenes Werkzeug aus Programm
+   uni[84]=md_p2nuni_calltno
+ 
+   if ($ac_marker[4]==0) or (uni[85]==0)
+      uni[85]=uni[83]
+   endif
+   uni[66]=1 uni[67]=0
+
+   ;Je nach gesetzter Option Magazinachsen freigeben
+   if (md_p2nuni_opt2b b_and 'h20000000')
+      release(ax7)
+   endif
+   if (md_p2nuni_opt2b b_and 'h80000000')
+      release(ax6)
+   endif
+   if (md_p2nuni_opt2b b_and 'h40000000')
+      release(ax9)
+   endif
+   h998 h996
+   
+   ;Bereitstellung im Kanal 2 starten
+   init(2,"/_n_cst_dir/_n_u_psel_spf")
+   start(2)
+   $ac_marker[4]=0
+   gotof hl_end
+endif
+
+ 
+;------------------------------------
+;Zyklusstart mit H-Funktion
+if md_p2nuni_opcode b_and 'h4000000')
+   u_hcyc
+   gotof hl_end
+endif
+
+
+;------------------------------------
+;Pendelbearbeitung Station 1 / 2
+if md_p2nuni_opcode b_and 'h8000000')
+ u_pendel
+ gotof hl_end
+endif
+
+
+;------------------------------------
+;BHG Bedienhandgerät 
+if md_p2nuni_opcode b_and 'h10000000')
+   u_bhg
+   gotof hl_end
+endif
+
+
+;------------------------------------
+;Zyklusende
+hl_end: 
+
+h470 
+M17
+

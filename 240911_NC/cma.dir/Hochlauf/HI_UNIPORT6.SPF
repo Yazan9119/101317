@@ -1,0 +1,177 @@
+;******************************************
+; Zyklus: HI_UNIPORT
+; - Kanal 1: Hochlauf Setzen der GUDs 
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Setzen der GUDs für Maschinentyp 
+; Uniport 6 beim Hochlauf der Steuerung
+; oder beim Referenzieren
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_INIT
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_uniport6 ;displof
+
+;------------------------------
+;Parameter Bearbeitungsprogramm
+Uni[0]=0               ;n.v.
+Uni[1]=0               ;WzW: Anwahl direkt in Kettenmagazin einfahren
+Uni[2]=0               ;WzW: Z-Achse nicht hochfahren am Ende des Wechsels 
+Uni[3]=0               ;n.v.
+Uni[4]=0               ;n.v.
+Uni[5]=0               ;n.v.
+Uni[6]=0               ;n.v.
+Uni[7]=0               ;n.v.
+Uni[8]=0               ;n.v.
+Uni[9]=0               ;n.v.
+
+;-------------------------------------------
+;Einstellungen / Werte für Winkelkopf (WiKo)
+Uni[10]=5              ;WiKo: Positioniergenauigkeit 2,5 oder 5 Grad
+Uni[11]=155.291  	   ;WiKo: Y-Maß 
+Uni[12]=164.751        ;WiKo: Z-Maß Aufnahme-Position 
+Uni[13]=0.008          ;Wiko: Zentrierfehler
+Uni[14]=0.005          ;Wiko: Statische Verschiebung in X
+Uni[15]=-0.017         ;Wiko: Statische Verschiebung in Y
+Uni[16]=0              ;Wiko: Winkelfehler in Z-Achse bei 0 Grad
+Uni[17]=-0.002         ;Wiko: Winkelfehler in Z-Achse bei 90 Grad
+Uni[18]=-0.003         ;Wiko: Winkelfehler in Z-Achse bei 180 Grad
+Uni[19]=0              ;Wiko: Winkelfehler in Z-Achse bei 270 Grad
+Uni[20]=0              ;Wiko: Letzte berechnete Verschiebung X-Achse
+Uni[21]=0              ;Wiko: Letzte berechnete Verschiebung X-Achse
+Uni[22]=0              ;Wiko: Letzte berechnete Verschiebung X-Achse
+
+;--------------------------------------------
+;Einstellungen / Werte für Wechsel Winkelkopf
+Uni[23]=600            ;WikoW: Sicherer Abstand Ablagestation in Y-Richtung
+Uni[24]=-1730.3        ;WikoW: Wechselposition Schutzring Y-Achse
+Uni[25]=-141.0         ;WikoW: Wechselposition Schutzring Z-Achse
+Uni[26]=0              ;WikoW: Sicherer Abstand Ablagestation zum in Z-Richtung
+Uni[27]=-1695.3        ;WikoW: Wechselposition Winkelkopf Y-Achse
+Uni[28]=-423.2         ;WikoW: Wechselposition Winkelkopf Z-Achse
+Uni[29]=0              ;WikoW: Wechselposition Winkelkopf Spindel
+
+Uni[37]=0              ;WikoW: Wechselposition Winkelkopf X-Achse
+Uni[38]=0              ;WikoW: Wechselposition Schutzring X-Achse
+Uni[39]=1              ;WikoW: Sicherer Abstand wenn Ablagestation geöffnet
+
+;-------------------------------------------------------
+;Einstellungen / Werte für Werkzeugwechsel in Winkelkopf
+Uni[30]=-350           ;WzW_Wiko: Sichere Position Y-Achse
+Uni[31]=40             ;WzW_Wiko: Abstand Werkzeug ablegen / aufnehmen
+Uni[32]=75.2           ;WzW_Wiko: Wechselpositon Y-Achse
+Uni[33]=-349.7         ;WzW_Wiko: Wechselposition Z-Achse
+Uni[34]=359
+Uni[35]=-1080
+Uni[36]=-200
+Uni[40]=0
+Uni[41]=30
+
+if (md_p2nuni_optmt==104) or (md_p2nuni_optmt==105) or (md_p2nuni_optmt==204)  gotof hl_m41
+Uni[41]=40
+
+hl_m41:
+Uni[42]=312.0 ;312.5 BL 13sep06
+Uni[43]=-235.4
+Uni[44]=0
+Uni[45]=-1080
+Uni[46]=-570
+Uni[48]=0
+Uni[49]=0
+Uni[50]=$MA_MAX_AX_VELO[AX2]
+If ($MA_MAX_AX_VELO[AX3]<Uni[50]) GotoF Lab50
+Uni[50]=$MA_MAX_AX_VELO[AX3]
+Lab50:
+Uni[51]=2000
+Uni[52]=0
+Uni[53]=170
+Uni[54]=1.0
+Uni[55]=3
+Uni[56]=1
+Uni[58]=1.0
+Uni[59]=92.416
+If ($A_DBD[76] B_AND 'H20000000')
+ Uni[60]=$MA_MAX_AX_VELO[Q4] * 360
+EndIf
+If ($A_DBD[76] B_AND 'H40000000')
+ Uni[61]=$MA_MAX_AX_VELO[Q5]
+EndIf
+Uni[62]=0
+Uni[63]=0
+Uni[64]=0
+Uni[65]=0
+Uni[68]=22
+Uni[69]=3
+Uni[71]=175
+Uni[72]=0
+Uni[73]=0
+Uni[74]=0
+Uni[75]=0
+Uni[76]=0
+Uni[77]=0
+Uni[78]=0
+Uni[79]=0
+Uni[83]=6
+Uni[86]=0
+Uni[87]=0
+Uni[88]=250
+Uni[89]=4000
+Uni[90]=0
+Uni[91]=0
+Uni[92]=0
+Uni[93]=0
+Uni[94]=0
+Uni[95]=0
+Uni[96]=0
+Uni[97]=0
+Uni[98]=0
+Uni[99]=0
+Uni[100]=1000
+Uni[101]=1
+Uni[106]=3000
+Uni[113]=20
+Uni[114]=20
+Uni[118]=3000
+Uni[119]=75
+Uni[120]=1
+Uni[121]=0.01
+Uni[122]=250
+Uni[123]=1500
+Uni[125]=80
+Uni[126]=350
+Uni[127]=180
+Uni[128]=0.003
+Uni[129]=10
+Uni[140]=0
+Uni[141]=0
+Uni[144]=0
+Uni[145]=0
+Uni[146]=-150
+Uni[147]=0
+If ($A_DBD[76] B_AND 'H80000000')
+ Uni[148]=$MA_MAX_AX_VELO[Q6] * 360
+EndIf
+Uni[149]=0
+Uni[153]=0
+Uni[154]=0
+Uni[155]=2
+Uni[156]=0
+Uni[157]=0
+Uni[158]=0
+Uni[159]=0
+StopRe
+M17

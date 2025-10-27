@@ -1,0 +1,59 @@
+;******************************************
+; Zyklus: PSEL
+; - Kanal 1: Werkzeugaufruf / -bereitstellung
+;******************************************
+; Autor: M. Schaaf
+; Datum: 27.08.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; 
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus PSEL
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_newtnr: Aufgerufenes Werkzeug
+; - lv_newtc: Werkzeugwechselmodus
+; 
+;
+; Hinweise
+; ========
+; Der Werkzeugname darf im Moment nur auf 
+; Zahlen bestehen und maximal 8 Stellen 
+; umfassen
+; z.B. T=12345678
+;******************************************
+
+proc psel(real lv_newtnr, int lv_newtc) displof
+;proc psel(string[32] lv_newtnr, int lv_newtc) displof
+
+
+ ;uvp preselection
+h430
+
+uni[57]=lv_newtnr
+unis[0]=<<lv_newtnr
+u_pocket
+
+
+if uni[57]<0
+ u_setal(67019)
+endif
+
+;-- Warten auf Kanal 2
+m33
+stopre
+
+;-- 
+uni[85]=lv_newtc
+$ac_marker[4]=1
+t=uni[57]
+h470 
+
+m17

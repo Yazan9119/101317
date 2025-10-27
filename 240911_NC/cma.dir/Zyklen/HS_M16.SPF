@@ -1,0 +1,30 @@
+;******************************************
+; Zyklus: HS_M16
+; - Kanal 1: Umprogrammieren M-Funktion
+;******************************************
+; Autor: M. Schaaf
+; Datum: 27.08.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Umsetzen von M16 auf Zyklus U_TOOL(0)
+;
+; Version
+; =======
+; V01.00.00 Neu
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+
+proc hs_m66 actblocno ;sblof displof
+
+U_TOOL(0)
+
+m17

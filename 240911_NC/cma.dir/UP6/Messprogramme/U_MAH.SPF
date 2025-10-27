@@ -1,0 +1,300 @@
+ ; 
+ ; NC-Program for Measuring Angular Head (Unisign Service)
+ ; Zorg ervoor dat nulpunt van het meetblokje in G54 zit, 
+ ; d.w.z.: Midden blokje XY  
+ ;         Bovenzijde blokje Z  
+ ;  
+ ; HAAL VOORAF DE HAKO OP MET  
+ ; DAARIN HET MEET-GEREEDSCHAP  
+ ;  
+ ; INSTELLINGEN VOORAF:  
+ ; Alle Hako R-Params op 0 zetten  
+ ; D.w.z  In U_INIT 
+ ; Uni[11] Uni[12] Uni[13] Uni[14] Uni[15] Uni[16]
+ ; Uni[17] Uni[18] Uni[19] op 0 zetten  
+ ; Dan in Automatic Ueberspeichern H301 geven  
+ ;  
+ ;  
+ ; Als Tijdens de meting het Programma op M0 staat,
+ ; dan naar Mode JOG gaan en SPINDEL START drukken om de
+ ; voeding vrij te geven
+ ; INGAVE PARAMETERS:  
+R0=20 ; Hoogte blokje in Z ca  
+R1=20 ; Lengte blokje in X  
+R2=20 ; Breedte blokje in Y  
+R3=10 ; Diameter meetkogel  
+R4=174.377 ; Lengte meettool  
+R5=165 ; Benaderingswaarde Hako Z  , UP7:190 UP6:165 
+R6=155 ; Benaderingswaarde Hako XY , UP7:180 UP6:155 
+R7=5 ; Veiligheidsafstand  
+ ;  
+G54
+R11=R1/2
+R12=R2/2
+R13=R3/2
+R14=R4+R11
+R15=R4+R12
+R16=R0/2
+R17=$P_UIFR[1,X,TR]
+R18=$P_UIFR[1,Y,TR]
+R19=$P_UIFR[1,Z,TR]
+ROT
+TRANS
+StopRe
+G0 G153 Z0 D0
+G153 Y-900
+RotH(0)
+ROT
+S1=0 M1=3
+SPos[1]=0
+R90=R5+R7+R13
+R91=-R6-R4+R13
+G0 X0 Y=R91
+Z=R90
+M0 ; Meet Z-  .1.  
+StopRe
+R31=$AA_IM[Z]
+StopRe
+G0 Z=R90
+X0 Y=R91
+S1=0 M1=3
+SPos[1]=180
+M0 ; Meet Z-  .1a.  
+StopRe
+R32=$AA_IM[Z]
+StopRe
+G0 Z=R90
+R92=R5-R16
+R93=R11+R7+R13
+R93=-R93
+X=R93 Y=R91
+Z=R92
+S1=0 M1=3
+SPos[1]=90
+M0 ; Meet X+  .2.  
+StopRe
+R33=$AA_IM[X]
+StopRe
+G0 X=R93
+Z=R90
+R93=-R93
+X=R93 Y=R91
+Z=R92
+S1=0 M1=3
+SPos[1]=270
+M0 ; Meet X-  .3.  
+StopRe
+R34=$AA_IM[X]
+StopRe
+G0 X=R93
+Z=R90
+R91=R6+R7+R15
+R91=-R91
+X0 Y=R91
+Z=R92
+M0 ; Meet Y+  .4.  
+StopRe
+R35=$AA_IM[Y]
+StopRe
+G0 Y=R91
+G0 G153 Z0
+G153 Y-900
+RotH(90)
+ROT
+S1=0 M1=3
+SPos[1]=90
+R91=-R6-R4+R13
+G0 X=R91 Y0
+Z=R90
+M0 ; Meet Z-  .5.  
+StopRe
+R36=$AA_IM[Z]
+StopRe
+G0 Z=R90
+X=R91 Y0
+S1=0 M1=3
+SPos[1]=270
+M0 ; Meet Z-  .5a.  
+StopRe
+R37=$AA_IM[Z]
+StopRe
+G0 Z=R90
+R93=R12+R7+R13
+R93=-R93
+X=R91 Y=R93
+Z=R92
+S1=0 M1=3
+SPos[1]=0
+M0 ; Meet Y+  .6.  
+StopRe
+R38=$AA_IM[Y]
+StopRe
+G0 Y=R93
+Z=R90
+R93=-R93
+X=R91 Y=R93
+Z=R92
+S1=0 M1=3
+SPos[1]=180
+M0 ; Meet Y-  .7.  
+StopRe
+R39=$AA_IM[Y]
+StopRe
+G0 Y=R93
+Z=R90
+R91=R6+R7+R14
+R91=-R91
+X=R91 Y0
+Z= R92
+M0 ; Meet X+  .8.  
+StopRe
+R40=$AA_IM[X]
+StopRe
+G0 X=R91
+G0 G153 Z0
+G153 Y-900
+RotH(180)
+ROT
+S1=0 M1=3
+SPos[1]=0
+R91=R6+R4-R13
+G0 X0 Y=R91
+Z= R90
+M0 ; Meet Z-  .9.  
+StopRe
+R41=$AA_IM[Z]
+StopRe
+G0 Z=R90
+X0 Y=R91
+S1=0 M1=3
+SPos[1]=180
+M0 ; Meet Z-  .9a.  
+StopRe
+R42=$AA_IM[Z]
+StopRe
+G0 Z=R90
+R93=R11+R7+R13
+R93=-R93
+X=R93 Y=R91
+Z=R92
+S1=0 M1=3
+SPos[1]=90
+M0 ; Meet X+  .10.  
+StopRe
+R43=$AA_IM[X]
+StopRe
+G0 X=R93
+Z=R90
+R93=-R93
+X=R93 Y=R91
+Z=R92
+S1=0 M1=3
+SPos[1]=270
+M0 ; Meet X-  .11.  
+StopRe
+R44=$AA_IM[X]
+StopRe
+G0 X=R93
+Z=R90
+R91=R6+R7+R15
+X0 Y=R91
+Z=R92
+M0 ; Meet Y-  .12.  
+StopRe
+R45=$AA_IM[Y]
+StopRe
+G0 Y=R91
+G0 G153 Z0
+G153 Y-900
+RotH(270)
+ROT
+S1=0 M1=3
+SPos[1]=90
+R91=R6+R4-R13
+G0 X=R91 Y0
+Z=R90
+M0 ; Meet Z-  .13.  
+StopRe
+R46=$AA_IM[Z]
+StopRe
+G0 Z=R90
+X=R91 Y0
+S1=0 M1=3
+SPos[1]=270
+M0 ; Meet Z-  .13a.  
+StopRe
+R47=$AA_IM[Z]
+StopRe
+G0 Z=R90
+R93=R12+R7+R13
+R93=-R93
+X=R91 Y=R93
+Z=R92
+S1=0 M1=3
+SPos[1]=0
+M0 ; Meet Y+  .14.  
+StopRe
+R48=$AA_IM[Y]
+StopRe
+G0 Y=R93
+Z=R90
+R93=-R93
+X=R91 Y=R93
+Z=R92
+S1=0 M1=3
+SPos[1]=180
+M0 ; Meet Y-  .15.  
+StopRe
+R49=$AA_IM[Y]
+StopRe
+G0 Y=R93
+Z=R90
+R91=R6+R7+R14
+X=R91 Y0
+Z=R92
+M0 ; Meet X-  .16.  
+StopRe
+R50=$AA_IM[X]
+StopRe
+G0 X=R91
+G0 G153 Z0
+ ; Berekening R25  
+R61=(R33+R34)/2
+R62=(R43+R44)/2
+R21=(R61-R62)/2
+R64=(R38+R39)/2
+R65=(R48+R49)/2
+R22=(R65-R64)/2
+R25=(R21+R22)/2
+R25=-R25
+ ; Berekening R26  
+R61=R35+R15
+R62=R40+R14
+R63=R45-R15
+R64=R50-R14
+R61=R61-R18
+R62=R62-R17
+R63=R63-R18
+R64=R64-R17
+R61=-R61
+R62=-R62
+R26=(R61+R62+R63+R64)/4
+ ; Berekening R27  
+R61=(R31+R32)/2
+R62=(R36+R37)/2
+R63=(R41+R42)/2
+R64=(R46+R47)/2
+R65=(R61+R62+R63+R64)/4
+R65=R65-R13
+R27=R65-R19
+ ; Berekening R28  
+R61=(R33+R34)/2
+R62=(R43+R44)/2
+R63=(R61+R62)/2
+R28=R63-R17
+ ; Berekening R29  
+R61=(R38+R39)/2
+R62=(R48+R49)/2
+R63=(R61+R62)/2
+R29=R63-R18
+N999 M17

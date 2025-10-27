@@ -1,0 +1,110 @@
+;******************************************
+; Zyklus: CTOOL
+; - Kanal 1: Werkzeug prüfen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 10.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Prüfen des Werkzeug auf Bruch /
+; Bohrerbruchkontrolle
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus CTOOL
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+
+def real lv_lv_dnr, lv_chktoolsel, lv_tlen
+def real lv_chkpos_y, lv_chkpos_z, lv_axpos_z
+def int lv_tno 
+
+;-- Globale GUDs auf lokale Variablen umkopieren
+lv_chktoolsel=Uni[76]  ; Anwahl Überwachung auf Bruch
+lv_chkpos_y=Uni[77]    ; Prüfposition Y-Achse
+lv_chkpos_z=Uni[78]    ; Prüfposition Z-Achse
+
+lv_tno=md_p2nuni_acttno_spi      ;Interne T-Nummer
+
+stopre
+;-- Aktuelle Schneidennummer
+lv_dnr=$p_tool
+mcall
+
+;-- Spindel einschalten mit Drehzahl 0
+m1=3 s1=0
+
+;-- Schneidenabwahl, G-Funktionen setzen
+d0
+g1 g40 g90 g94
+
+;-- Satzsuchlauf oder Bohrerbruch nicht angewählt -> Zyklusende 
+if ($p_search==1) or (lv_chktoolsel==0) gotof hl_end
+
+;-- Angewählte Schneide prüfen
+if (lv_dnr<=0) 
+   hs_fehler(67900)  ;FM: (alt: 67006)
+endif
+
+;-- Werkzeuglänge 
+lv_tlen=$TC_DP3[lv_tno,lv_dnr]
+if (lv_tlen<=0)
+   hs_fehler(67900)  ;FM: (alt: 67004)
+endif
+
+;-- Z-Achse positionieren
+;   H401: Werkzeugmagazintüren öffnen
+g153 g0 z0 h401
+
+if (lv_chkpos_y<0) gotof hl_yposneg
+
+;-- Y-Achse positionieren
+;   H419: Umschalten Softwareendschalter (2 aktiv)
+g153 g0 y0
+h419
+stopre
+
+hl_yposneg:
+;-- Z-Position mit Werkzeuglänge berechnen
+lv_axpos_z=lv_chkpos_z+lv_tlen
+
+;-- Y-Achse positionieren, Spindel 100 U/min
+;   H432: Prüfe Detektor i.o / kein Werkzeug erkannt
+g153 g0 y=lv_chkpos_y m1=3 s1=100 h432
+
+;-- Z-Achse positionieren und warten
+g153 g60 lv_axpos_z
+g4 f0.3
+stopre
+
+; -- H472: Prüfe Werkzeug nicht gebrochen
+h472
+
+;-- Y-/Z-Achse freifahren, Spindel stoppen
+g153 g0 y0 z0 m1=5
+
+hl_end:
+;-- Spindel stoppen
+;   H441: Werkzeugmagazintüren schliessen
+;   H459: Umschalten Softwareendschalter (1 aktiv)
+m1=5 h441 h459
+stopre
+;-- Schneide anwählen 
+d1   
+;d=lv_dnr
+
+N920 D1
+
+
+m17
+
+

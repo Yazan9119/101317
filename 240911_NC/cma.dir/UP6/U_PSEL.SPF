@@ -1,0 +1,527 @@
+;******************************************
+; Zyklus: U_PSEL
+; - Kanal 2: Bereitstellen des aufgerufenen
+;   Werkzeugs
+;
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Stellt das Werkzeug das im Bearbeitungs-
+; programm im Kanal programmiert wurde je nach
+; Auftragscode an den Übrgabeplätzen bereit
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_PSEL
+;           Anpassungen an Siemens WzV 
+;
+;******************************************
+;
+; Variablen
+; =========
+; - keine
+;
+;******************************************
+;
+; Verwendete GUDs
+;    Uni[66]: 
+;    Uni[84]: Programmierte Werkzeugnummer
+;    Uni[85]: Werkzeugwechselbefehl
+;               -6: Werkzeug wird direkt vom Magazinplatz geholt, nicht von Übergabeplatz (nur Spindel)
+;                6: Werkzeugvorwahl für Spindel, Werkzeug kommt auf einen der beiden Übergabeplätze Spindel
+;               66: Werkzeugvorwahl für Winkelkopf, Werkzeug kommt auf einen der beiden Übergabeplätze Winkelkopf
+;
+;******************************************
+
+
+
+;---------------------------------
+;Variablendefintion
+def real lv_HelpVarReal1, lv_HelpVarReal2
+def real lv_pos_ax, lv_pos_tol, lv_pos_magpl
+
+def int lv_HelpVarInt1
+def int lv_SelMagPl
+def int lv_NewToolNo
+def int lv_NewTcMode
+def int lv_cntmagpl, lv_actmagpl
+
+def bool lv_TpInMag1, lv_MagPl_Cleared
+
+
+;Aufruf ohne GUDs vorher richtig zu setzen
+if uni[66]<>1 gotof hl_invpara 
+
+;H998: ??? Funktion nicht beschrieben in Doku
+h998
+
+
+if (Uni[85]<>-6) AND (Uni[85]<>6) AND (Uni[85]<>66)
+   ;Unzulässiger Werkzeugwechselbefehl -> Standardwert setzen
+   ;Vorbereitung für Übergabeplatz Spindel   
+   Uni[85]=6
+endif
+
+;
+lv_NewToolNo= Uni[84]   ;Ident-Nummer des Werkzeugs (kommt von U_FUNC oder U_TOOL)
+lv_NewTcMode= Uni[85]   ;Wechseltyp 
+
+;Magazinachse in NC holen
+Get(Q4)
+
+;Grundeinstellungen G-Gruppen
+D0 G1 G90 G71 F=Uni[60] H495
+
+;Werkzeuggreifer 1 ausgefahren?
+if (pnuni_in_gr1in==0) and (pnuni_in_gr1out==1) gotof hl_gr1out
+
+if (pnuni_in_gr1in==0) and (pnuni_in_gr1out==0)
+   ;Greifer 1 nicht in einer der beiden Endlagen
+   hs_fehler(67016)
+   gotof hl_end
+endif   
+   
+
+;---------------------------------
+;Werkzeuggreifer 1 eingefahren
+
+;H842: Werkzeug in Greifer lösen
+h842
+
+;Aktuelle Position Q4-Achse und Positionstoleranz
+lv_pos_ax=$aa_im[q4]
+lv_pos_tol=uni[58]
+
+;Werkzeugdaten in Greifer 1
+if (md_p2nuni_acttno_gr1<>0)
+   
+   ;Spindel-Übergabeplatz 1 am Greifer 1?
+   lv_pos_magpl=(((Uni[70]-4)*(360/Uni[70]))+Uni[59]) MOD 360
+   if abs(lv_pos_ax-lv_pos_magpl)<lv_pos_tol
+      ;Werkzeug <nr> am Spindel-Übergabeplatz 1
+      h=(71000+md_p2nuni_acttno_gr1)
+   else
+      ;Spindel-Übergabeplatz 2 am Greifer 1?      
+	  lv_pos_magpl=(((Uni[70]-3)*(360/Uni[70]))+Uni[59]) MOD 360
+      if abs(lv_pos_ax-lv_pos_magpl)<lv_pos_tol
+         ;Werkzeug <nr> am Spindel-Übergabeplatz 2
+         h=(72000+md_p2nuni_acttno_gr1)
+      else
+         ;WiKo-Übergabeplatz 1 am Greifer 1?      
+	     lv_pos_magpl=(((Uni[70]-3)*(360/Uni[70]))+Uni[59]) MOD 360
+         if abs(lv_pos_ax-lv_pos_magpl)<lv_pos_tol
+            ;Werkzeug <nr> am WiKo Übergabeplatz 1
+            h=(76000+md_p2nuni_acttno_gr1)
+         else
+            ;WiKo-Übergabeplatz 1 am Greifer 1?      
+	        lv_pos_magpl=(((Uni[70]-3)*(360/Uni[70]))+Uni[59]) MOD 360
+            if abs(lv_pos_ax-lv_pos_magpl)<lv_pos_tol
+               ;Werkzeug <nr> am WiKo Übergabeplatz 1
+               h=(77000+md_p2nuni_acttno_gr1)
+            endif
+         endif
+      endif 		 
+   endif
+endif 
+
+;H78000: Kein Werkzeug in Greifer 1 
+;H843: Prüfen ob Werkzeug in Greifer 1 gelöst
+;H800: Werkzeug aus Kettenmagazin nehmen
+h78000
+h843
+h800
+
+;---------------------------------------------
+;Greifer ist ausgefahren
+hl_gr1out: 
+
+;H801: Pürfen, ob Werkzeug aus Kettenmagazin genommen
+h801
+if (pnuni_in_plahout==0) and (pnuni_in_plahin==1) gotof hl_magpl_vrt
+if ($aa_im[y]>=(uni[40])+uni[58])
+   ;Y-Achse im Bereich Magazin
+   hs_fehler(67016)
+   gotof hl_end
+endif
+
+;H844: WiKo-Übergabeplätze senkrecht stellen (im Magazin) 
+h844
+
+;-----------------------------------------
+;WiKo-Übergabeplätze stehen senkrecht
+hl_magpl_vrt: 
+
+;H845: Prüfen, ob WiKo-Übergabeplätze  senkrecht stehen
+h845
+
+;-----------------------------------------
+;Werkzeug in Magazin
+hl_ToolInMag:
+
+;Beide WiKo-Übergabeplätze belegt oder beide Spindel-Übergabeplätze belegt
+;oder Greifer 1 belegt und Werkzeug in Greifer ist nicht das aufgerufene 
+;Werkzeug
+if ((md_p2nuni_acttno_ah1<>0) and (md_p2nuni_acttno_ah2<>0)) or ((md_p2nuni_acttno_sp1<>0) and (md_p2nuni_acttno_sp2<>0)) or ((md_p2nuni_acttno_gr1>uni[70]) and (md_p2nuni_acttno_gr1<>lv_newtoolno))
+   lv_MagPl_Cleared=false
+else
+   lv_MagPl_Cleared=true
+endif
+
+;-----------------------------------------
+;Zielplatz für Werkzeug bestimmen
+lv_SelMagPl=0
+if (lv_newtcmode == 66)
+   ;Wechseltyp WiKo angefordert
+   if md_p2nuni_acttno_ah1==0
+      ;WiKo-Übergabeplatz 1 ist frei
+	  lv_SelMagPl=uni[70]-1
+   else
+      ;WiKo-Übergabeplatz 2 ist frei
+      lv_SelMagPl=uni[70]
+   endif
+else
+   ;Wechseltyp in Spindel
+   if md_p2nuni_acttno_sp1==0
+      ;Spindel-Übergabeplatz 1 ist frei
+	  lv_SelMagPl=uni[70]-3
+   else
+      ;Spindel-Übergabeplatz 2 ist frei
+	  lv_SelMagPl=uni[70]-2
+   endif
+endif
+lv_HelpVarInt1=lv_SelMagPl
+
+
+;Kein Werkzeug im Greifer
+if md_p2nuni_acttno_gr1==0 gotof hl_gr1not
+
+;Werkzeug im Greifer
+if (md_p2nuni_acttno_gr1<>lv_newtoolno) or not lv_MagPl_Cleared
+   ;Werkzeug im Greifer ist nicht das aufgerufene Werkzeug
+   if md_p2nuni_acttno_gr1<=(uni[70]-4)
+      ;Werkzeug im Greifer aus Magazin
+	  lv_HelpVarInt1=md_p2nuni_acttno_gr1
+   else
+      ;Werkzeug im Greifer nicht aus Magazin
+	  lv_HelpVarInt1=0
+   endif
+endif
+
+if (lv_HelpVarInt1==0)
+   ;Kein Platz für Werkzeug bestimmt
+   hs_fehler(67016)
+endif
+
+;Kettenmagazin auf Platz verfahren
+;H803: Prüfen, ob Werkzeuggreifer geklemmt
+lv_HelpVarReal2=(((lv_HelpVarInt1-1)*(360/uni[70]))+uni[59]) mod 360
+g0 g153 q4=dc(lv_HelpVarReal2) h803
+
+if pnuni_in_gr1tlprs==1 
+   ;Endchalter Werkzeug in Greifer anwesend 
+   hs_fehler(67017)
+   gotof hl_end
+endif
+
+;H840: Greifer Werkzeug in Kettenmagazin setzen
+;H841: Prüfen, ob Werkzeug in Kettenmagazin gesetzt 
+;H842: Werkzeug lösen
+h840 h841
+h842
+
+;Werkzeugdaten in Zielplatz umspeichern
+if lv_HelpVarInt1==(uni[70]-1)
+   ;Wiko-Übergabeplatz 1 an Greifer 1
+   h=(76000+md_p2nuni_acttno_gr1)
+endif
+if (lv_HelpVarInt1==uni[70])
+   ;Wiko-Übergabeplatz 2 an Greifer 1
+   h=(77000+md_p2nuni_acttno_gr1)
+endif
+if lv_HelpVarInt1==(uni[70]-3)
+   ;Spindel-Übergabeplatz 1 an Greifer 1
+   h=(71000+md_p2nuni_acttno_gr1)
+endif
+if lv_HelpVarInt1==(uni[70]-2)
+   ;Spindel-Übergabeplatz 2 an Greifer 1
+   h=(72000+md_p2nuni_acttno_gr1)
+endif
+
+;H78000: Kein Werkzeug in Greifer 1 
+;H843: Prüfen ob Werkzeug in Greifer 1 gelöst
+;H800: Greifer aus Kettenmagazin ausfahren
+;H801: Prüfen, ob Greifer aus Kettenmagazin ausgefahren
+h78000
+h843
+h800 h801
+
+;-----------------------------------------
+;Greifer ist leer und ausgefahren
+hl_gr1not:
+
+lv_HelpVarInt1=0
+lv_HelpVarReal1=0
+if (md_p2nuni_acttno_ah1<>0) and (md_p2nuni_acttno_ah2<>0)
+   ;Beide WiKo-Übergabeplätze belegt
+   lv_HelpVarReal1=1
+   if md_p2nuni_acttno_ah1==lv_NewToolNo
+      ;Aufgerufenes Werkzeug liegt auf Wiko-Übergabeplatz 1
+	  lv_HelpVarInt1=uni[70]
+   else
+      lv_HelpVarInt1=uni[70]-1
+   endif
+endif
+
+if (md_p2nuni_acttno_sp1<>0) and (md_p2nuni_acttno_sp2<>0)
+   ;Beide Spindel-Übergabeplätze belegt
+   lv_HelpVarReal1=lv_HelpVarReal1+1
+   if md_p2nuni_acttno_sp1==lv_NewToolNo
+      ;Werkzeug liegt auf Spindel-Übergabeplatz 1
+	  lv_HelpVarInt1=uni[70]-2
+   else
+      lv_HelpVarInt1=uni[70]-3
+   endif
+endif
+
+if lv_NewToolNo==0
+   ;T0 programmiert
+   lv_HelpVarReal1=4
+   if (md_p2nuni_acttno_ah1<>0)
+      ;WiKo-Übergabeplatz 1 belegt
+	  lv_HelpVarInt1=uni[70]-1
+   endif
+   if (md_p2nuni_acttno_ah2<>0)
+      ;WiKo-Übergabeplatz 2 belegt
+	  lv_HelpVarInt1=uni[70]
+   endif
+   if (md_p2nuni_acttno_sp1<>0)
+      ;Spindel-Übergabeplatz 1 belegt
+	  lv_HelpVarInt1=uni[70]-3
+   endif
+   if (md_p2nuni_acttno_sp2<>0)
+      ;Spindel-Übergabeplatz 2 belegt
+      lv_HelpVarInt1=uni[70]-2
+   endif
+endif
+
+if lv_HelpVarInt1>0
+   ;Kettenmagazin auf Platz verfahren
+   ;H842: ;H842: Werkzeug lösen
+   lv_HelpVarReal2=(((lv_HelpVarInt1-1)*(360/uni[70]))+uni[59]) mod 360
+   g0 g153 q4=dc(lv_HelpVarReal2) h842
+   
+   ;H843: Prüfen ob Werkzeug in Greifer 1 gelöst
+   ;H840: Greifer Werkzeug in Kettenmagazin setzen
+   ;H841: Prüfen, ob Werkzeug in Kettenmagazin gesetzt 
+   ;H802: Werkzeuggreifer klemmen
+   h843
+   h840 h841
+   h802
+ 
+   ;Werkzeugdaten in Greifer umspeichern
+   ;Werkzeugdaten Übergabeplatz löschen
+   if lv_HelpVarInt1==(uni[70]-1)
+      h=(78000+md_p2nuni_acttno_ah1)
+      h76000
+   endif
+   if lv_HelpVarInt1==uni[70]
+      h=(78000+md_p2nuni_acttno_ah2)
+      h77000
+   endif
+   if lv_HelpVarInt1==(uni[70]-3)
+      h=(78000+md_p2nuni_acttno_sp1)
+      h71000
+   endif
+   if lv_HelpVarInt1==(uni[70]-2)
+      h=(78000+md_p2nuni_acttno_sp2)
+      h72000
+   endif
+
+   ;H803: Prüfen, ob Werkzeuggreifer geklemmt
+   ;H800: Greifer aus Kettenmagazin ausfahren
+   ;H801: Prüfen, ob Greifer aus Kettenmagazin ausgefahren
+   h803
+   h800 h801
+   
+   ;Zurück, für nächsten Platz -> Solange bis alle Übergabeplätze und Greifer leer
+   gotob hl_ToolInMag
+endif
+
+;Werkzeug nicht im Magazin
+if (lv_NewToolNo==0) gotof hl_NoTpMag
+
+
+lv_HelpVarInt1=0
+if (lv_NewToolNo<=uni[70])
+   ;Werkzeug im Magazin
+   lv_HelpVarInt1=lv_NewToolNo
+endif
+
+if (lv_NewTcMode==-6) or (md_p2nuni_acttno_ah1==lv_newtoolno) or (md_p2nuni_acttno_ah2==lv_newtoolno) or (md_p2nuni_acttno_sp1==lv_newtoolno) or (md_p2nuni_acttno_sp2==lv_newtoolno) or (md_p2nuni_acttno_spi==lv_newtoolno)
+   ;Werkzeug direkt aus Kette oder Werkzeug bereits auf einem Übergabeplatz oder in der Spindel
+	lv_HelpVarInt1=0
+endif
+
+if (lv_NewTcMode==66)
+   ;Werkzeugwechseltyp WiKo
+   if (md_p2nuni_acttno_sp1==lv_NewToolNo)
+      ;Werkzeug liegt auf Spindel-Übergabeplatz 1 
+	  lv_HelpVarInt1=uni[70]-3
+   endif
+   if (md_p2nuni_acttno_sp2==lv_NewToolNo)
+      ;Werkzeug liegt auf Spindel-Übergabeplatz 2 
+      lv_HelpVarInt1=uni[70]-2
+   endif	  
+endif
+
+
+if lv_HelpVarInt1>0
+  ;Kettenmagazin auf Platz verfahren
+  ;H842: Greifer 1 Werkzeug lösen
+   lv_HelpVarReal2=(((lv_HelpVarInt1-1)*(360/uni[70]))+uni[59]) mod 360
+   g0 g153 q4=dc(lv_HelpVarReal2) h842
+ 
+  ;H843: Prüfen ob Werkzeug in Greifer 1 gelöst
+  ;H840: Greifer Werkzeug in Kettenmagazin setzen
+  ;H841: Prüfen, ob Werkzeug in Kettenmagazin gesetzt 
+  ;H802: Werkzeuggreifer klemmen
+   h843
+   h840 h841
+   h802
+ 
+ 
+   ;Werkzeugdaten in Greifer löschen
+   ;Werkzeugdaten auf Übergabeplatz umspeichern
+   h=(78000+lv_newtoolno)
+   if lv_HelpVarInt1==uni[70]-3
+      h71000
+   endif
+   if lv_HelpVarInt1==uni[70]-2
+      h72000
+   endif
+   if lv_HelpVarInt1==uni[70]-1
+      h76000
+   endif
+   if lv_HelpVarInt1==uni[70]
+      h77000
+   endif
+   
+   ;H803: Prüfen, ob Werkzeuggreifer geklemmt
+   ;H800: Greifer aus Kettenmagazin ausfahren
+   ;H801: Prüfen, ob Greifer aus Kettenmagazin ausgefahren
+   h803
+   h800 h801
+  
+   ;Zurück, für nächsten Platz -> Solange bis alle Übergabeplätze und Greifer leer
+   gotob hl_ToolInMag
+endif
+stopre
+
+
+;-----------------------------------------
+;Kette / Magazinplatz in Wechselposition 
+hl_NoTpMag:
+hl_TpInSpi:
+
+;Werkzeugwechsel aktiv
+if pnuni_in_tcact==1 gotof hl_TcAct
+
+;Zielplatz Kette bestimmen
+lv_HelpVarInt1=0
+if md_p2nuni_acttno_spi<>0
+   ;Werkzeug in Spindel -> leeren Platz bereitstellen 
+   if md_p2nuni_ah_mode==66
+      ;Wechseltyp WiKo
+      if md_p2nuni_acttno_ah1==0
+         ;WiKo-Übergabeplatz 1 ist leer 
+		 lv_HelpVarInt1=uni[70]-1
+      else
+         ;WiKo-Übergabeplatz 2
+		 lv_HelpVarInt1=uni[70]
+      endif
+   else
+      ;Wechseltyp Spindel
+      if md_p2nuni_acttno_sp1==0
+         ;Spindel-Übergabeplatz 1 ist leer 
+		 lv_HelpVarInt1=uni[70]-3
+      else
+	     ;Spindel-Übergabeplatz 2
+         lv_HelpVarInt1=uni[70]-2
+      endif
+  
+      if (uni[81]==0) AND (md_p2nuni_acttno_spi<=Uni[70])
+         ;Spindelwerkzeug kommt direkt auf Magazinplatz
+		 lv_HelpVarInt1=md_p2nuni_acttno_spi
+      endif
+   endif
+else
+   ;Spindel ist leer -> Platz mit aufgerufenem Werkzeug bereitstellen
+   if lv_NewToolNo<>0
+      ;Werkzeug wurde aufgerufen
+	  if lv_NewTcMode<>-6
+         ;Kein Wechsel direkt aus Magazinplatz
+		 if md_p2nuni_acttno_ah1==lv_NewToolNo
+            lv_HelpVarInt1=uni[70]-1
+         endif
+         if md_p2nuni_acttno_ah2==lv_NewToolNo
+            lv_HelpVarInt1=uni[70]
+         endif
+         if md_p2nuni_acttno_sp1==lv_NewToolNo
+            lv_HelpVarInt1=uni[70]-3
+         endif
+         if md_p2nuni_acttno_sp2==lv_NewToolNo
+            lv_HelpVarInt1=uni[70]-2
+         endif
+      else
+         ;Wechsel direkt aus Magazinplatz
+		 if lv_NewToolNo<=Uni[70]
+            lv_HelpVarInt1=lv_NewToolNo
+         endif
+      endif
+   endif
+endif
+
+;Magazinplatz anfahren
+if lv_HelpVarInt1>0
+   lv_HelpVarReal1=(lv_HelpVarInt1-1)*(360/uni[70])
+   g0 g153 q4=dc(lv_HelpVarReal1)
+endif
+
+
+;-----------------------------------------
+;Werkzeugwechsel aktiv
+hl_TcAct:
+
+;Q4-Achse freigeben
+release(q4)
+uni[67]=1
+h999
+
+gotof hl_end
+
+;-----------------------------------------
+;Unzulässige Parameter
+hl_invpara:
+if (pnuni_in_tlselok==0) 
+   hs_fehler(67013)
+   gotof hl_end
+endif
+
+if (uni[66]==2) and (uni[67]<>2)
+   uni[67]=2
+endif
+gotof hl_end
+
+
+;-----------------------------------------
+;Zyklusende
+hl_end:
+stopre
+
+;Id-Nummern vor und nach Vorbereitung
+if uni[66]<>uni[67] gotob hl_invpara
+M17

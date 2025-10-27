@@ -1,0 +1,214 @@
+;******************************************
+; Zyklus: USLOT
+; - Kanal 1: Nut fräsen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Fräsen einer Einzelnut 
+;   - Nullpunktverschiebung muss aktiv sein
+;   - Startposition X,Y muss angefahren sein
+;   - Spindel-Drehzahl muss eingeschaltet sein
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus USLOT
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_rtp: Rückzugsabstand
+; - lv_sdis: Sicherheitsabstand
+; - lv_dp: Bearbeitungstiefe
+; - lv_leng: Nutlänge
+; - lv_wid: Nutbreite
+; - lv_sta1: Winkel (bezogen auf X-Achse)
+; - lv_cdir: Fräsrichtung (2=Gegenlauf, 3=Gleichlauf, -x=Gerade Strecke im Eilgang)
+;
+;******************************************
+
+
+proc uslot(real lv_rtp,real lv_sdis,real lv_dp,real lv_leng,real lv_wid,real lv_sta1,int lv_cdir) save ;displof
+
+def real lv_posx, lv_posy, lv_newx, lv_newy, lv_radt, lv_arad, lv_anga, lv_lf, lv_nf
+def bool lv_g0=false
+
+if (lv_sta1<0) gotof hl_neg
+gotof hl_pos
+
+hl_neg:
+lv_sta1=360-abs(lv_sta1)
+
+hl_pos:
+
+;---------------------------
+;Positionen errechnen
+lv_posx=$aa_iw[x]
+lv_posy=$aa_iw[y]
+
+lv_newx=lv_posx+(cos(lv_sta1)*(lv_leng-lv_wid))
+lv_newy=lv_posy+(sin(lv_sta1)*(lv_leng-lv_wid))
+
+lv_radt=$tc_dp6[$p_toolno,$p_tool] 
+lv_arad=((lv_wid/2)-lv_radt)
+lv_lf=$P_F lv_nf=(lv_lf/(lv_wid/2))*lv_arad
+
+;-- Fahren auf Sicherheitsabstand
+g0 z=ac(lv_sdis)
+
+;-- Eintauchen auf Nuttiefe
+;   Abh. von lv_cdir im Eilgang
+if lv_cdir < 0 gotof hl_g0
+   g0 z=ac(lv_dp)
+   lv_g0=true
+else
+   lv_g0=false
+   g1 z=ac(lv_dp)
+endif
+
+;-- Fräsen im Gegenlauf
+if abs(lv_cdir)==2 gotof hl_ccw
+
+;----------------------------
+;Fräsen im Gleichlauf
+hl_cw:
+
+;-- Alle Maßangaben erfolgen im Polarkoordinaten-System
+g111 x=lv_posx y=lv_posy
+lv_anga=lv_sta1+135
+if lv_anga<360 gotof hl_cw_ecke1
+lv_anga=lv_anga-360
+
+hl_cw_ecke1:
+if lv_g0
+   g0 g64 ap=ac(lv_anga) rp=ac((lv_arad/2)*sqrt(2)) f=lv_lf
+else
+   g1 g64 ap=ac(lv_anga) rp=ac((lv_arad/2)*sqrt(2)) f=lv_lf
+endif
+lv_anga=lv_sta1+180
+if lv_anga<360 gotof hl_cw_ecke2
+lv_anga=lv_anga-360
+
+hl_cw_ecke2:
+g112 ap=lv_anga rp=lv_arad/2
+g3 ap=ac(lv_anga) rp=ac(lv_arad/2) f=lv_nf
+g111 x=lv_posx y=lv_posy
+lv_anga=lv_sta1+270
+if lv_anga<360 gotof hl_cw_ecke3
+lv_anga=lv_anga-360
+
+hl_cw_ecke3:
+g3 ap=ac(lv_anga) rp=ac(lv_arad)
+g111 x=lv_newx y=lv_newy
+g1 ap=ac(lv_anga) rp=ac(lv_arad) f=lv_lf
+lv_anga=lv_sta1+90
+if lv_anga<360 gotof hl_cw_ecke4
+lv_anga=lv_anga-360
+
+hl_cw_ecke4:
+g3 ap=ac(lv_anga) f=lv_nf
+g111 x=lv_posx y=lv_posy
+g1 ap=ac(lv_anga) rp=ac(lv_arad) f=lv_lf
+lv_anga=lv_sta1+180
+if lv_anga<360 gotof hl_cw_ecke5
+lv_anga=lv_anga-360
+
+hl_cw_ecke5:
+g3 ap=ac(lv_anga) f=lv_nf
+lv_anga=lv_sta1+180
+if lv_anga<360 gotof hl_cw_ecke6
+lv_anga=lv_anga-360
+
+hl_cw_ecke6:
+g112 ap=lv_anga rp=lv_arad/2
+lv_anga=lv_sta1+270
+if lv_anga<360 gotof hl_cw_ecke7
+lv_anga=lv_anga-360
+
+hl_cw_ecke7:
+g3 ap=ac(lv_anga) rp=ac(lv_arad/2) f=lv_nf
+if lv_g0
+   g0 g60 x=ac(lv_posx) y=ac(lv_posy) f=lv_lf
+else
+   g1 g60 x=ac(lv_posx) y=ac(lv_posy) f=lv_lf
+endif
+
+gotof hl_end
+
+;----------------------------
+;Fräsen im Gegenlauf
+hl_ccw:
+
+;-- Alle Maßangaben erfolgen im Polarkoordinaten-System
+g111 x=lv_posx y=lv_posy
+lv_anga=lv_sta1+225
+if lv_anga<360 gotof hl_ccw_ecke1
+lv_anga=lv_anga-360
+
+hl_ccw_ecke1:
+if lv_g0
+   g0 g64 ap=ac(lv_anga) rp=ac((lv_arad/2)*sqrt(2)) f=lv_lf
+else
+   g1 g64 ap=ac(lv_anga) rp=ac((lv_arad/2)*sqrt(2)) f=lv_lf
+endif
+lv_anga=lv_sta1+180
+if lv_anga<360 gotof hl_ccw_ecke2
+lv_anga=lv_anga-360
+
+hl_ccw_ecke2:
+g112 ap=lv_anga rp=lv_arad/2
+g2 ap=ac(lv_anga) rp=ac(lv_arad/2) f=lv_nf
+g111 x=lv_posx y=lv_posy
+lv_anga=lv_sta1+90
+if lv_anga<360 gotof hl_ccw_ecke3
+lv_anga=lv_anga-360
+
+hl_ccw_ecke3:
+g2 ap=ac(lv_anga) rp=ac(lv_arad)
+g111 x=lv_newx y=lv_newy
+g1 ap=ac(lv_anga) rp=ac(lv_arad) f=lv_lf
+lv_anga=lv_sta1+270
+if lv_anga<360 gotof hl_ccw_ecke4
+lv_anga=lv_anga-360
+
+hl_ccw_ecke4:
+g2 ap=ac(lv_anga) f=lv_nf
+g111 x=lv_posx y=lv_posy
+g1 ap=ac(lv_anga) rp=ac(lv_arad) f=lv_lf
+lv_anga=lv_sta1+180
+if lv_anga<360 gotof hl_ccw_ecke5
+lv_anga=lv_anga-360
+
+hl_ccw_ecke5:
+g2 ap=ac(lv_anga) f=lv_nf
+lv_anga=lv_sta1+180
+if lv_anga<360 gotof hl_ccw_ecke6
+lv_anga=lv_anga-360
+
+hl_ccw_ecke6:
+g112 ap=lv_anga rp=lv_arad/2
+lv_anga=lv_sta1+90
+if lv_anga<360 gotof hl_ccw_ecke7
+lv_anga=lv_anga-360
+
+hl_ccw_ecke7:
+g2 ap=ac(lv_anga) rp=ac(lv_arad/2)
+if lv_g0
+   g0 g60 x=ac(lv_posx) y=ac(lv_posy) f=lv_lf
+else
+   g1 g60 x=ac(lv_posx) y=ac(lv_posy) f=lv_lf
+endif
+gotof hl_end
+
+hl_end:
+;Rückzug auf Rückzugsebene
+g0 z=ac(lv_rtp)
+
+m17
+
+
+

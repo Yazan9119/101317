@@ -1,0 +1,518 @@
+;******************************************
+; Zyklus: HI_INIT
+; - Kanal 1: Hochlauf 
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Hochlauf Haupt-Zyklus Kanal 1
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_INIT
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_init actblocno sblof displof
+
+def bool lv_erg,lv_sim
+def int  lv_i,lv_ax_nr
+
+hl_wait1:
+lv_sim=($p_sim) or (gd_cmvm_mode==1)
+stopre
+cv_init_state=5
+
+;-- Warten auf Freigabe Hochlauf durch PLC
+if not(lv_sim) and not(pnfrghlk1) gotob hl_wait1
+
+stopre
+cv_init_state=25
+gd_autom_bed=(($mn_user_data_hex[2] b_and 'b11')=='b11') ;Automotiv-Bedienung
+
+;Maschinenspezifische Variablen
+gd_mnr              =$mn_user_data_float[0]
+
+
+;!!!GSN Umschreiben Antriebsparameter
+;!!!GSN if (($mn_user_data_hex[97] b_and 'b10000000')==0)or(($mn_user_data_hex[97] b_and 'b11')<>0) ;kein Simualtor oder Simulation mit CMVM
+;!!!GSN   hi_motiondata
+;!!!GSN endif
+
+stopre
+cv_init_state=26
+
+;-- Umschaltung auf inch 
+hi_inch
+stopre
+cv_init_state=27
+
+;-- Maschinentyp aus Maschinendatum
+;  1095: Hüller Hille NBH95 
+;  1135: Hüller Hille NBH135
+;  ...
+;  1350: Hüller Hille NBH350
+;
+;  2006: Unisign Uniport 6
+gd_mtyp=$mn_user_data_int[0]
+
+
+;Maschinen-typ-spezifische Variablen
+;!!!GSN gd_media            =$mn_user_data_hex[31]
+;!!!GSN gd_wzw_strt         =gd_user_data_int_70
+;!!!GSN gd_wzw_spz_mod      =$mn_user_data_hex[30]
+;!!!GSN gd_wzw_spz_loe      =gd_user_data_int_71
+;!!!GSN gd_wzw_strt_x       =$mn_user_data_int[74]
+;!!!GSN gd_wzw_strt_s       =$mn_user_data_int[73]
+;!!!GSN gd_wzw_spi_richt    =$mn_user_data_int[81]
+;!!!GSN gd_wzwvseok         =$mn_user_data_int[56]
+
+
+;Maschinenvariante
+gd_apc=0
+;!!!GSN if (($mn_user_data_hex[40] b_and 'b1')==0)
+;!!!GSN  gd_apc=true
+;!!!GSN else
+;!!!GSN  if (($mn_user_data_hex[56] b_and 'b1000000')<>0) ;Frontbeladung
+;!!!GSN   gd_flex_auto=true
+;!!!GSN  else
+;!!!GSN   gd_flex_standalone=true
+;!!!GSN  endif
+;!!!GSN endif
+
+;!!!GSN ;C-Kopf Typ ermitteln
+;!!!GSN gd_pcu=false
+;!!!GSN if (($MN_USER_DATA_INT[1]-trunc($MN_USER_DATA_INT[1]/100)*100)==7)or(($MN_USER_DATA_INT[1]-trunc($MN_USER_DATA_INT[1]/100)*100)==18)
+;!!!GSN  gd_pcu=true
+;!!!GSN endif
+;!!!GSN gd_pct=false
+;!!!GSN if ($MN_USER_DATA_INT[1]-trunc($MN_USER_DATA_INT[1]/100)*100)==12
+;!!!GSN  gd_pct=true
+;!!!GSN endif
+;!!!GSN gd_dcu=false
+;!!!GSN if ($MN_USER_DATA_INT[1]-trunc($MN_USER_DATA_INT[1]/100)*100)==16
+;!!!GSN  gd_dcu=true
+;!!!GSN endif
+;!!!GSN gd_dct=false
+;!!!GSN if ($MN_USER_DATA_INT[1]-trunc($MN_USER_DATA_INT[1]/100)*100)==17
+;!!!GSN  gd_dct=true
+;!!!GSN endif
+;!!!GSN gd_scu=false
+;!!!GSN if ($MN_USER_DATA_INT[1]-trunc($MN_USER_DATA_INT[1]/100)*100)==8
+;!!!GSN  gd_scu=true
+;!!!GSN endif
+;!!!GSN gd_sct=false
+;!!!GSN if ($MN_USER_DATA_INT[1]-trunc($MN_USER_DATA_INT[1]/100)*100)==9
+;!!!GSN  gd_sct=true
+;!!!GSN endif
+
+;Werkzeugwechsler mit Überhub
+;!!!GSN if ($MN_USER_DATA_INT[0]==2) and (($MN_USER_DATA_INT[4]==5000)or($MN_USER_DATA_INT[4]==6000)) and (gd_pcu or gd_dcu or gd_scu)
+;!!!GSN gd_uehub_wzwYFix=true
+;!!!GSN endif
+
+
+;-- Rundachsen auswerten
+stopre
+cv_init_state=30
+hi_rot_ax
+
+;-- Software-Nocken beschreiben
+stopre
+cv_init_state=31
+hi_swcam
+
+;-- Grundstellungsfahrt initialisieren
+stopre
+cv_init_state=32
+hi_home
+
+stopre
+cv_init_state=33
+
+;-- Warten auf Kanal 2
+if $mn_assign_chan_to_mode_group[1]==2
+   ;Warten, bis Kanal 2 Wartemarke 30 erreicht hat
+   waitm(30,2)
+   g4f0
+endif
+
+;-- Geber (Motor / extern) auswerten
+stopre
+cv_init_state=34
+hi_enc
+
+;!!!GSN ;Maschinendaten überprüfen, die beim Hochlauf Fehler auslösen
+;!!!GSN ;Mindestabstand Greifer von Spannposition, bei dem Verschiebeeinrichtung wegfahren darf
+;!!!GSN if $mn_user_data_int[56]==0
+;!!!GSN  setal(66111,"$MN_USER_DATA_INT[56]")
+;!!!GSN endif
+;!!!GSN ;Grenzdrehzahl
+;!!!GSN ;if $mn_user_data_int[59]==0
+;!!!GSN ; setal(66111,"$MN_USER_DATA_INT[59]")
+;!!!GSN ;endif
+
+
+;-- Achsnamen Basisachsen festlegen
+if gd_ax_soll 
+   ;-- Hüller Hille NBH
+   if ((gd_mtyp >=1000) and (gd_mtyp<=1999))  
+      gd_mbasax_x=axname($mn_axconf_machax_name_tab[0])
+      gd_mbasax_y=axname($mn_axconf_machax_name_tab[1])
+      gd_mbasax_z=axname($mn_axconf_machax_name_tab[2])
+      gd_mbasax_b=axname($mn_axconf_machax_name_tab[4])
+   
+      if gd_ax_a_vorh
+         gd_mbasax_c=axname($mn_axconf_machax_name_tab[3])
+      endif
+      if gd_ax_c_vorh 
+         gd_mbasax_c=axname($mn_axconf_machax_name_tab[3])
+      endif
+   endif
+   
+   ;---------------------------------------
+   ;-- Unisign-Maschinen (z.B. Uniport)
+   if ((gd_mtyp >=2000) and (gd_mtyp<=2999))
+      gd_mbasax_x=axname($mn_axconf_machax_name_tab[0])
+      gd_mbasax_y=axname($mn_axconf_machax_name_tab[1])
+      gd_mbasax_z=axname($mn_axconf_machax_name_tab[2])
+   endif
+
+   stopre
+   cv_init_state=35
+endif
+
+
+;-- Maschinentypabhängige Daten
+if (gd_mtyp==2006)
+   ;-- Initialisierung Maschinentyp Unisign Uniport 6
+   hi_uniport6
+endif
+
+;-- Baugrößen-spezifische Daten
+hi_bg
+
+;-- Arbeitsraumbeschränkungen
+if gd_ax_soll
+   gv_fbreschr_plus[0,0]=gd_wa_xplus
+   gv_fbreschr_plus[0,1]=gd_wa_xplus
+   gv_fbreschr_plus[0,2]=gd_wa_xplus
+   gv_fbreschr_plus[1,0]=$ma_pos_limit_plus2[gd_mbasax_y]
+   gv_fbreschr_plus[1,1]=$ma_pos_limit_plus2[gd_mbasax_y]
+   gv_fbreschr_plus[1,2]=$ma_pos_limit_plus2[gd_mbasax_y]
+   gv_fbreschr_plus[2,0]=gd_wa_zplus
+   gv_fbreschr_plus[2,1]=gd_wa_zplus
+   gv_fbreschr_plus[2,2]=gd_wa_zplus
+   if (gd_ax_a_vorh)or(gd_ax_c_vorh)
+      gv_fbreschr_plus[3,0]=$ma_pos_limit_plus2[gd_5th_axis]
+      gv_fbreschr_plus[3,1]=$ma_pos_limit_plus2[gd_5th_axis]
+      gv_fbreschr_plus[3,2]=$ma_pos_limit_plus2[gd_5th_axis]
+   else
+      gv_fbreschr_plus[3,0]=100000
+      gv_fbreschr_plus[3,1]=100000
+      gv_fbreschr_plus[3,2]=100000
+   endif
+   if gd_ax_b_vorh
+      gv_fbreschr_plus[4,0]=$ma_pos_limit_plus2[gd_mbasax_b]
+      gv_fbreschr_plus[4,1]=$ma_pos_limit_plus2[gd_mbasax_b]
+      gv_fbreschr_plus[4,2]=$ma_pos_limit_plus2[gd_mbasax_b]
+   else
+      gv_fbreschr_plus[4,0]=100000
+      gv_fbreschr_plus[4,1]=100000
+      gv_fbreschr_plus[4,2]=100000
+   endif
+ 
+ gv_fbreschr_minus[0,0]=$ma_pos_limit_minus2[gd_mbasax_x]
+ gv_fbreschr_minus[0,1]=$ma_pos_limit_minus2[gd_mbasax_x]
+ gv_fbreschr_minus[0,2]=$ma_pos_limit_minus2[gd_mbasax_x]
+ gv_fbreschr_minus[1,0]=$ma_pos_limit_minus2[gd_mbasax_y]
+ gv_fbreschr_minus[1,1]=$ma_pos_limit_minus2[gd_mbasax_y]
+ gv_fbreschr_minus[1,2]=$ma_pos_limit_minus2[gd_mbasax_y]
+ gv_fbreschr_minus[2,0]=$ma_pos_limit_minus2[gd_mbasax_z]
+ gv_fbreschr_minus[2,1]=$ma_pos_limit_minus2[gd_mbasax_z]
+ gv_fbreschr_minus[2,2]=$ma_pos_limit_minus2[gd_mbasax_z]
+ if (gd_ax_a_vorh)or(gd_ax_c_vorh)
+  gv_fbreschr_minus[3,0]=$ma_pos_limit_minus2[gd_5th_axis]
+  gv_fbreschr_minus[3,1]=$ma_pos_limit_minus2[gd_5th_axis]
+  gv_fbreschr_minus[3,2]=$ma_pos_limit_minus2[gd_5th_axis]
+ else
+  gv_fbreschr_minus[3,0]=-100000
+  gv_fbreschr_minus[3,1]=-100000
+  gv_fbreschr_minus[3,2]=-100000
+ endif
+ if gd_ax_b_vorh
+  gv_fbreschr_minus[4,0]=$ma_pos_limit_minus2[gd_mbasax_b]
+  gv_fbreschr_minus[4,1]=$ma_pos_limit_minus2[gd_mbasax_b]
+  gv_fbreschr_minus[4,2]=$ma_pos_limit_minus2[gd_mbasax_b]
+ else
+  gv_fbreschr_minus[4,0]=-100000
+  gv_fbreschr_minus[4,1]=-100000
+  gv_fbreschr_minus[4,2]=-100000
+ endif
+
+endif
+
+
+;!!!GSN gd_paw_maxwzl       =gd_w1  ;Quelle SPEZ.00020239
+;!!!GSN gd_paw_x_ausw       =gd_k2  ;Quelle SPEZ.00020239
+;!!!GSN gd_paw_z_ausw       =gd_user_data_int_106  ;Quelle SPEZ.00020239
+;!!!GSN gd_sbbk_tol_def     =$mn_user_data_int[160]
+;!!!GSN gd_sbbk_maxwzl      =gd_maxHL
+
+;!!!GSN gd_wzrng_wzeit       =$mn_user_data_int[86]
+;!!!GSN gd_wzrng_spalt       =gd_user_data_int_87
+;!!!GSN gd_wzrng_anzhubw     =$mn_user_data_int[88]
+;!!!GSN gd_wzrng_hubw        =gd_user_data_int_89
+;!!!GSN gd_wzrng_anzhubl     =$mn_user_data_int[90]
+;!!!GSN gd_wzrng_hubl        =gd_user_data_int_91
+
+;!!!GSN gd_wzvm_ymin=400*gd_fact_metr_inch_mm   ;Minimalposition Y für Start Werkzugvermessung
+
+stopre
+cv_init_state=36
+
+if (gd_tem==false)and(gd_tem_l==false)
+   npgb_anw ;Geber anwählen
+else
+   if (gd_tem==false)and(gd_tem_l==true)
+      npgb_anw b_or 'b10000' ;Geber anwählen
+   else
+      if (gd_tem_l==false) 
+         npgb_anw b_or 'b10000000' ;Geber anwählen
+      else
+         npgb_anw b_or 'b10010000' ;Geber anwählen
+      endif
+   endif 
+endif 
+
+stopre
+cv_init_state=40
+if not(wmr_enabled)
+ hi_shank
+ hi_wmk
+endif
+
+;Softwareendschalter
+;!!!GSN if(gd_uehub_wzwYFix==true)
+;!!!GSN  if (vertori_enabled)
+;!!!GSN   si_swe_tc='h10'   ;X-
+;!!!GSN  else
+;!!!GSN   si_swe_tc='h1'    ;X+
+;!!!GSN  endif
+;!!!GSN else
+;!!!GSN  si_swe_tc='b0'
+;!!!GSN endif
+;!!!GSN if (vertori_enabled)
+;!!!GSN   si_swe_wpc='b10'  ;Y+
+;!!!GSN  else
+;!!!GSN   si_swe_wpc='b100' ;Z+
+;!!!GSN  endif
+
+;!!!GSN ;Dynamikanpassung Werkzeugwechsler
+;!!!GSN hi_tc_dyn
+
+stopre
+cv_init_state=42
+;!!!GSN hi_tpu
+;!!!GSN hi_thpu
+
+;* * * Schneidenanwahl
+stopre
+cv_init_state=46        
+if($tc_mpp6[9998,1]>0)
+  ;-- Werkzeug in Spindel
+  d=$p_toold[$tc_mpp6[9998,1],1]
+else
+  ;-- Kein Werkzeug in Spindel
+  d0
+endif
+
+;D-Speicher loeschen
+gv_d_nr=-1
+
+;!!!GSN ;Magazin auf Geisterwerkzeuge untersuchen (nur Kette)
+;!!!GSN if not(wmr_enabled)and(lv_sim==false)
+;!!!GSN  lv_erg=true
+;!!!GSN  for lv_i=1 to $TC_MAP7[1]
+;!!!GSN   if ($tc_mppc1[1,lv_i]==1)and($tc_mpp6[1,lv_i]==0) or($tc_mppc1[1,lv_i]==0)and($tc_mpp6[1,lv_i]<>0)  
+;!!!GSN    setal(67138,<<lv_i) ;Werkzeugdaten fehlen, oder Werkzeug nicht eingesetzt (Platz: %4). Magazinbewegung gesperrt.
+;!!!GSN    lv_erg=false
+;!!!GSN   endif
+;!!!GSN  endfor
+;!!!GSN endif
+
+;Warten bis Geberanwahl erfolgt
+stopre
+cv_init_state=48 
+if (lv_sim==false)
+   when (pngb_angw) do setm(31)
+   waitm(31,$p_channo)
+   stopre
+   clearm(31)
+endif
+
+stopre
+cv_init_state=50 
+;!!!GSN if (lv_sim==false)
+;!!!GSN    hi_ipm 
+;!!!GSN endif
+
+stopre
+cv_init_state=52 
+hi_mag ;Initialisierung Werkzeugmagazin
+
+stopre
+cv_init_state=54
+
+stopre
+cv_init_state=56
+;!!!GSN if gd_ax_soll
+;!!!GSN  if gd_ax_c_vorh or (gd_ax_a_vorh and (gd_part_kin==false))
+;!!!GSN   ;Maschinenmasssystem anwählen
+;!!!GSN   execstring(gd_select_scaling_system)
+;!!!GSN   ;Maschinenspezifische Positionen
+;!!!GSN   hi_f
+;!!!GSN  endif
+;!!!GSN  hi_kin_chain
+;!!!GSN endif
+
+stopre
+cv_init_state=58
+;!!!GSN if comp_z_s_enabled
+;!!!GSN  if isfile("/_N_CMA_DIR/_N_HI_COMP_Z_S_SPF")
+;!!!GSN   hi_comp_z_s ;Spindelwachstum durch Drehzahl
+;!!!GSN  endif
+;!!!GSN endif
+
+;-- Synchronaktionen
+hi_sync
+
+;-- Kompensation (Temperatur, etc.)
+;!!!GSN hi_ics
+
+stopre
+cv_init_state=80 
+
+;Planzug
+;!!!GSN if (pze_enabled)
+;!!!GSN  hs_slide_conf
+;!!!GSN endif
+
+stopre
+cv_init_state=90 
+
+;Werkzeugvermessung
+if wzvm_blum_enabled or wzvm_ren_enabled
+   hi_wzvm
+endif
+if wzvm_blum_enabled
+   hi_wzvm_blum
+endif
+
+
+
+
+hs_recover
+;!!!GSN hs_wqpt
+
+stopre
+cv_init_state=92 
+
+;!!!GSN if (loaddyn_enabled)
+;!!!GSN  hi_loaddyn
+;!!!GSN  hi_load_dyn_ini_val
+;!!!GSN  for lv_i=0 to 7
+;!!!GSN   lv_ax_nr=gd_loaddyn_axnr[lv_i]
+;!!!GSN   if (lv_ax_nr>0)
+;!!!GSN    if (n_perf_speed)
+;!!!GSN     hs_load_dyn_activate(lv_ax_nr,1,100)
+;!!!GSN   else
+;!!!GSN     hs_load_dyn_activate(lv_ax_nr,0,100)
+;!!!GSN    endif
+;!!!GSN   endif
+;!!!GSN endfor
+;!!!GSN  hi_load_dyn_ini_val
+;!!!GSN endif
+
+stopre
+cv_init_state=93 
+
+;!!!GSN towstd
+;!!!GSN if ($mcs_function_mask_tech b_and 'h400')
+;!!!GSN  if (si_balance_tol==0)
+;!!!GSN   si_balance_tol=nw_max_balance_tol
+;!!!GSN  endif
+;!!!GSN  stopre
+;!!!GSN  cv_init_state=94 
+;!!!GSN endif
+
+if (gd_ax_a_vorh) or (gd_ax_c_vorh)
+;!!!GSN  $tc_adpt2[1]=0
+   if (gd_ax_soll)
+      cycle800 ;Schwenkzyklus nach Hochlauf ablöschen
+   endif
+endif
+
+;!!!GSN if ($mcs_function_mask_tech b_and 'h400')
+;!!!GSN  hi_turn
+;!!!GSN endif
+
+;VCS initialisieren
+stopre
+cv_init_state=95
+;!!!GSN if vcs_enabled
+;!!!GSN  vcs_file_table[0]=1
+;!!!GSN  vcs_file_read[0]=1
+;!!!GSN  vcs_file_table_entry_apply[0]=1
+;!!!GSN endif
+
+;ITC Vorbesetzung Wärmeausdehnungskoeffizient auf Stahl
+if comp_mess_enabled
+   if syg_rm[33]==0
+      syg_rm[33]=11.5
+   endif
+endif
+
+;!!!GSN if ($p_channo==1)
+;!!!GSN  if (($mn_user_data_hex[6] b_and 'b1')==0)
+;!!!GSN   $mcs_function_mask_tech=$mcs_function_mask_tech b_or 'h38010'
+;!!!GSN   $mcs_function_mask_tech=$mcs_function_mask_tech b_and b_not 'h8'
+;!!!GSN  else
+;!!!GSN   $mcs_function_mask_tech=$mcs_function_mask_tech b_or 'h8'
+;!!!GSN  $mcs_function_mask_tech=$mcs_function_mask_tech b_and b_not 'h38010'
+;!!!GSN  endif
+;!!!GSN endif
+
+stopre
+cv_init_state=97 
+
+;Inbetriebnahmekennungen abloeschen
+stopre
+$MN_USER_DATA_HEX[8]=$MN_USER_DATA_HEX[8] B_AND B_NOT 'B10000000' ;Update
+$MN_USER_DATA_HEX[8]=$MN_USER_DATA_HEX[8] B_AND B_NOT 'B01000000' ;Neuinbetriebnahme
+
+if (lv_sim==false)
+   nphlk1_end ;Hochlauf Kanal1 fertig
+endif
+
+stopre
+cv_init_state=99
+
+;!!!GSN if ((($mn_user_data_hex[97] b_and 'b10')<>0) or (($mn_user_data_hex[97] b_and 'b100')<>0)) ;CMVM/NCU mit Virtuos
+;!!!GSN  hi_simu   ;Kommunikation NC -> Virtuos
+;!!!GSN endif
+
+ret
+
+
+

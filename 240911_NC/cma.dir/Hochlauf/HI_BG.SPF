@@ -1,0 +1,45 @@
+;******************************************
+; Zyklus: HI_INIT
+; - Kanal 1: Hochlauf Baugröße
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Hochlauf Baugrößenspezifische Daten
+; Datei muss für jeden Maschinentyp und jede
+; Baugröße angepasst sein
+;
+; Zuordnung
+; =========
+;  Maschine: Unisign Uniport 6
+;  Baugröße: X=
+;  
+;   
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_BG
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_bg actblocno ;sblof displof
+
+;Vorposition Autoset
+
+;-- Arbeitsbereich
+gd_wa_xplus=$ma_pos_limit_plus2[gd_mbasax_x]
+gd_wa_xminus=$ma_pos_limit_minus2[gd_mbasax_x]
+gd_wa_zplus=$ma_pos_limit_plus2[gd_mbasax_z] 
+
+
+ret
+

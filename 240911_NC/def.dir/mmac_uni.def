@@ -1,0 +1,81 @@
+;VERSION: 01.00.00
+;Last Changed Rev: 5834 | Last Changed Author: hin | Last Changed Date: 2022-05-05 13:55:07 +0200 (Do, 05 Mai 2022) 
+;Regalmagazin
+
+define md_p2nuni_fctno        as $a_dbd[0]		;Funktionsnummer BHG / H-Nummer
+define md_p2nuni_opcode       as $a_dbd[4]		;Auftragscode für U_FUNC
+define md_p2nuni_calltno	  as $a_dbd[8]		;Aufgerufene T-Nummer aus NC
+define md_p2nuni_seltno       as $a_dbd[12]		;Vorgewähltes Werkzeug
+define md_p2nuni_acttno_spi	  as $a_dbd[16]		;Werkzeug in Spindel
+define md_p2nuni_acttno_sld	  as $a_dbd[20]		;Werkzeug in Verschiebeschlitten
+define md_p2nuni_acttno_ah1	  as $a_dbd[24]		;Werkzeug in Übergabeplatz 1 zu / von WiKo 
+define md_p2nuni_acttno_ah2	  as $a_dbd[28]		;Werkzeug in Übergabeplatz 2 zu / von WiKo 
+define md_p2nuni_acttno_gr1	  as $a_dbd[32]		;Werkzeug in Greifer 1 
+define md_p2nuni_ah_mode      as $a_dbd[36]		;Hilfskopf-Typ an Spindel 
+define md_p2nuni_ah_angle     as $a_dbr[40]		;Hilfskopf-Winkel in 0,1 Grad-Schritten
+define md_p2nuni_acttno_sp1	  as $a_dbd[44]		;Werkzeug in Übergabeplatz 1 zu / von Spindel
+define md_p2nuni_acttno_sp2	  as $a_dbd[48]		;Werkzeug in Übergabeplatz 2 zu / von Spindel
+define md_p2nuni_res52        as $a_dbd[52]     ;n.v.
+define md_p2nuni_actposch     as $a_dbd[56]     ;Aktuelle Position Kettenmagazin
+define md_p2nuni_optmt        as $a_dbd[60]     ;Option Maschinentyp
+define md_p2nuni_acttno_gr2   as $a_dbd[64]     ;Werkzeug in Greifer 2 
+define md_p2nuni_acttno_gr3   as $a_dbd[68]     ;Werkzeug in Greifer 3
+define md_p2nuni_opt1b        as $a_dbd[72]     ;DB104.DBD0 - Optionen bitweise
+define md_p2nuni_opt2b        as $a_dbd[76]     ;DB104.DBD4 - Optionen bitweise
+define md_p2nuni_prod1        as $a_dbd[80]     ;Produktion Anzahl 0
+define md_p2nuni_prod2        as $a_dbd[84]     ;Produktion Anzahl 1
+define md_p2nuni_prod3        as $a_dbd[88]     ;Produktion Anzahl 2
+define md_p2nuni_sideosc      as $a_dbd[92]		;Zielseite Pendeln
+define md_p2nuni_res96        as $a_dbd[96]     ;n.v.
+define md_p2nuni_res100       as $a_dbd[100]    ;n.v.
+define md_p2nuni_res104       as $a_dbd[104]    ;n.v.
+define md_p2nuni_res108       as $a_dbd[104]    ;n.v.
+define md_p2nuni_res112       as $a_dbd[104]    ;n.v.
+define md_p2nuni_res116       as $a_dbd[104]    ;n.v.
+define md_p2nuni_res120       as $a_dbd[104]    ;n.v.
+define md_p2nuni_res124       as $a_dbd[104]    ;n.v.
+
+
+define pnuni_in_res1          as $a_in[1]      ;n.v.
+define pnuni_in_res2          as $a_in[2]      ;n.v.
+define pnuni_in_res3          as $a_in[3]      ;n.v.
+define pnuni_in_res4          as $a_in[4]      ;n.v.
+define pnuni_in_res5          as $a_in[5]      ;n.v.
+define pnuni_in_gear2act      as $a_in[6]      ;Getriebestufe 2 eingerückt
+define pnuni_in_ch2act        as $a_in[7]      ;Kanal 2 aktiv (n.v.)
+define pnuni_in_ch1act        as $a_in[8]      ;Kanal 1 aktiv (n.v.)
+define pnuni_in_gr1in         as $a_in[9]      ;Werkzeug-Greifer 1 in Kette 
+define pnuni_in_gr1out        as $a_in[10]     ;Werkzeug-Greifer 1 aus Kette  
+define pnuni_in_gr2in         as $a_in[11]     ;Werkzeug-Greifer 2 in Kette (n.v.)
+define pnuni_in_gr2out        as $a_in[12]     ;Werkzeug-Greifer 2 aus Kette (n.v.)
+define pnuni_in_gr3in         as $a_in[13]     ;Werkzeug-Greifer 2 in Kette (n.v.)
+define pnuni_in_gr3out        as $a_in[14]     ;Werkzeug-Greifer 2 aus Kette (n.v.)
+define pnuni_in_plahout       as $a_in[15]     ;Kettenmagazin: Werkzeug gekippt
+define pnuni_in_plahin        as $a_in[16]     ;Kettenmagazin: Werkzeug nicht gekippt und kippen verriegelt
+define pnuni_in_dgup          as $a_in[17]     ;Status Doppelgreifer oben (n.v.)
+define pnuni_in_dgdown        as $a_in[18]     ;Status Doppelgreifer unten (n.v.) 
+define pnuni_in_dgs1spi       as $a_in[19]     ;Status Doppelgreifer Seite 1 an Spindel (n.v.) 
+define pnuni_in_dgs2spi       as $a_in[20]     ;Status Doppelgreifer Seite 2 an Spindel (n.v.) 
+define pnuni_in_cfcvrspi      as $a_in[21]     ;Option Schutzring vorhanden 
+define pnuni_in_gearswauto    as $a_in[22]     ;Automatische Getriebeumschaltung aktiv 
+define pnuni_in_tcact         as $a_in[23]     ;Werkzeugwechsel ist aktiv 
+define pnuni_in_gr1tlprs      as $a_in[24]     ;Werkzeug auf Greifer 1 vorhanden
+define pnuni_in_gr2tlprs      as $a_in[25]     ;Werkzeug auf Greifer 2 vorhanden (n.v.) 
+define pnuni_in_gr3tlprs      as $a_in[26]     ;Werkzeug auf Greifer 3 vorhanden (n.v.) 
+define pnuni_in_key_mvchain   as $a_in[27]     ;Taste "Takten Kettenmagazin" 
+define pnuni_in_tlselok       as $a_in[28]     ;Werkzeugvorwahl korrekt beendet 
+define pnuni_in_tt1_gear1act  as $a_in[29]     ;Drehtisch 1 - Getriebestufe 1 aktiv (n.v.) 
+define pnuni_in_tt2_gear2act  as $a_in[30]     ;Drehtisch 1 - Getriebestufe 2 aktiv (n.v.) 
+define pnuni_in_tt1_gear1act  as $a_in[31]     ;Drehtisch 2 - Getriebestufe 1 aktiv (n.v.)
+define pnuni_in_tt2_gear2act  as $a_in[32]     ;Drehtisch 2 - Getriebestufe 2 aktiv (n.v.)
+define pnuni_in_key_deldstgo  as $a_in[33]     ;Taste "Restweg löschen"  (n.v.)
+define pnuni_in_fct_deldstgo  as $a_in[34]     ;Funktion Restweg löschen
+define pnuni_in_res35         as $a_in[35]     ;n.v.
+define pnuni_in_res36         as $a_in[36]     ;n.v.
+define pnuni_in_key_a1p       as $a_in[37]     ;Pendeln - Taste "A1-"
+define pnuni_in_key_a1m       as $a_in[38]     ;Pendeln - Taste "A1+"
+define pnuni_in_key_a2p       as $a_in[39]     ;Pendeln - Taste "A2-"
+define pnuni_in_key_a2m       as $a_in[40]     ;Pendeln - Taste "A2+"
+
+m30
+

@@ -1,0 +1,99 @@
+;VERSION: 10.01.00
+;Last Changed Rev: 173 | Last Changed Author: hin | Last Changed Date: 2023-01-26 09:31:47 +0100 (Do, 26 Jan 2023) 
+def axis a_achse,b_achse1,b_achse2
+def int  lv_gg7,lv_autopar,lv_load,lv_mag_pl,lv_mag,lv_plnr,lv_erg
+def int  lv_asuppara1_k2, lv_asuppara2_k2, lv_asuppara3_k2, lv_asuppara4_k2
+def bool lv_error
+def string[32] lv_tool_name
+
+;-- Simulation aktiv
+if $p_sim
+   ret
+endif
+
+;hs_wmr_fehler(,,"*** cycpe_ma_ch2   $p_prog_event="<<$p_prog_event,lv_error)
+
+;sblof 
+goto "hl_prog_ev"<<$p_prog_event
+
+;ASUP oder Unterprogramm
+hl_prog_ev0:
+ 
+if cv_init_state<>99
+   setal(66103);NC-Hochlauf wurde nicht erfolgreich durchlaufen
+endif
+
+;hl_wait1:
+;if npnasupk2_sema==0 gotob hl_wait1
+;   npnasupk2_sema=0
+;   gotoc "HL_ZYK"<<pnocodasupk2
+;   setal(66004,"10");Interner HELLER Systemfehler. Fehlercode: %4
+; 
+;   HL_ZYK0: ;Unterprogrammaufruf
+;  $a_dbb[108]=0
+;geht wahrscheinlich schief, da vor Auswertung von dbb[100] auf dbb[109] gewartet werden muss,
+;dieser aber bei Unterprogrammaufruf nicht gesetzt ist.
+;  gotof hl_end ;keine Funktion angewählt
+; ;ASUP-Aufruf
+; HL_ZYK1: ;Einrichtfunktion
+;  hs_wmr_fehler(,,"    Aufrufparameter SETU pnasuppara1_k2="<<pnasuppara1_k2,lv_error)
+;  hs_wmr_setu(pnasuppara1_k2)
+;  gotof hl_end
+; HL_ZYK2: ;Platzprüfung
+;  lv_asuppara1_k2=pnasuppara2_k2*256+pnasuppara1_k2
+;  lv_asuppara2_k2=pnasuppara4_k2*256+pnasuppara3_k2
+;  lv_asuppara3_k2=pnasuppara6_k2*256+pnasuppara5_k2
+;  lv_asuppara4_k2=pnasuppara8_k2*256+pnasuppara7_k2
+;  hs_wmr_fehler(,,"    Aufrufparameter PLFREI para1="<<lv_asuppara1_k2,lv_error)
+;  hs_wmr_fehler(,,"                           para2="<<lv_asuppara2_k2,lv_error)
+;  hs_wmr_fehler(,,"                           para3="<<lv_asuppara3_k2,lv_error)
+;  hs_wmr_fehler(,,"                           para4="<<lv_asuppara4_k2,lv_error)
+;  hs_wmr_fehler(,,"                           pnasuppara5_k2="<<pnasuppara5_k2,lv_error)
+;  hs_wmr_plfrei(lv_asuppara1_k2,lv_asuppara2_k2,lv_asuppara3_k2,lv_asuppara4_k2,pnasuppara5_k2,lv_erg)
+;  if lv_erg==0  ;WZ passt nicht auf Platz
+;   npn_asupk2_erl=1
+;  endif
+;  if lv_erg==1  ;WZ passt auf Platz
+;   npn_asupk2_erl=2
+;  endif
+;  if lv_erg==999;kein WZ auf Quellplatz
+;   npn_asupk2_erl=3
+;  endif
+;  if lv_erg==998;fehlerhafte Hüllkontur
+;   npn_asupk2_erl=3
+;  endif
+ gotof hl_end
+
+;NC-Start
+hl_prog_ev1:
+;sblon
+if (cv_init_state<>99)
+   setal(66103);NC-Hochlauf wurde nicht erfolgreich durchlaufen
+endif
+; hs_recover_ch2
+gotof hl_end
+
+;M30 or NC-Reset
+hl_prog_ev2:
+hl_prog_ev3:
+stopre
+cv_reset_state=1
+;hs_recover_ch2
+gotof hl_end
+
+;Steuerungs-Hochlauf
+hl_prog_ev4:
+stopre
+cv_init_state=1
+hi_init_ch2
+gotof hl_end
+
+;Satzsuchlauf
+hl_prog_ev5:
+
+gotof hl_end
+
+hl_end:
+M17
+
+

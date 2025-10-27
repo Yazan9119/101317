@@ -1,0 +1,72 @@
+;******************************************
+; Zyklus: U_PENDEL
+; - Kanal 1: Pendelbearbeitung
+;******************************************
+; Autor: M. Schaaf
+; Datum: 10.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Pendelbearbeitung mit Trennwand
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_PENDEL
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc U_PENDEL ;displof
+
+def real lv_possplit_x, lv_distsplit_x, lv_posfeed
+def int lv_side
+
+lv_possplit_x = Uni[150]    ; Position Trennwand
+lv_distsplit_x = Uni[71]    ; Abstand Trennwand - Arbeitsfeldbegrenzung
+lv_posfeed = Uni[50]        ; Vorschub
+lv_side = md_p2nuni_sideosc ; Zielseite für Pendeln
+
+if ($sa_workarea_minus_enable[ax1]==0) or ($sa_workarea_plus_enable[ax1]==0)
+   hs_fehler(67900) ;FM: Arbeitsfeldbegrenzung nicht aktiv (alt: 67014)
+   gotof hl_end
+endif
+mcall
+
+;-- Arbeitsfeldbegrenzung ausschalten 
+walimof
+
+;-- Achsen positionieren
+g1 g40 g90 g94 d0
+g153 g602 f=lv_posfeed z0
+
+;-- Pendeln auf Seite 1
+if (lv_side==1)
+   ;X-Achse positionieren
+   g153 g602 x=lv_possplit_x-lv_distsplit_x-1
+ 
+   ;-- Arbeitsfeldbegrenzung setzen
+   g25 x-99999
+   g26 x=lv_possplit_x-lv_distsplit_x
+endif
+
+;-- Pendeln auf Seite 2
+if (lv_side==2)
+   g153 g602 x=lv_possplit_x+lv_distsplit_x+1
+   
+   g25 x=lv_possplit_x+lv_distsplit_x
+   g26 x99999
+endif
+
+;-- Arbeitsfeldbegrenzung einschalten 
+walimon
+
+hl_end:
+stopre
+m17
+

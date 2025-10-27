@@ -1,0 +1,326 @@
+;******************************************
+; Zyklus: U_HCYC
+; - Kanal 1: Nut fräsen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Zyklen gestartet mit H-Funktionen
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_HCYC
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+
+proc u_hcyc ;displof
+
+def int lv_hnr, lv_mag_newpos, lv_chip_pos, lv_fct_handled
+def real lv_pos_ax_q, lv_pos_ax_a1
+
+def real lv_plinmag, lv_corrplmag
+
+mcall
+g1 g40 g90 g94
+
+lv_fct_handled=0
+lv_hnr=md_p2nuni_fctno
+
+
+;-------------------------------
+; H300: Maschine zur Feierabend-
+;       position fahren
+if (lv_hnr==300)
+   lv_fct_handled=1
+   
+   g25 x-99999
+   g26 x99999
+ 
+   m1=5 m9
+   d0 g0 g40 g90 g94
+   g153 g602 z0
+   if (md_p2nuni_ah_mode==66) and (md_p2nuni_ah_angle<>90)
+      ;Winkelkopf in Spindel und nicht auf 90 Grad
+	  ;-> Positionieren auf 90 Grad
+	  setal(67018)
+      m0
+      stopre
+      setal
+      g153 g602 y=(uni[27]+uni[42])/2
+      roth(90)
+   endif
+   g153 g602 y0
+   m33
+   
+   ;-- Abhängig von Maschinentyp Achsen freigeben
+   if (md_p2nuni_opt2b b_and 'h20000000')
+      release(ax7)
+   endif
+   if (md_p2nuni_opt2b b_and 'h40000000')
+      release(ax9)
+   endif
+   if (md_p2nuni_opt2b b_and 'h80000000')
+      release(ax6)
+   endif
+   
+   Uni[84]=0
+   Uni[66]=1 Uni[67]=0
+   Init(2,"/_N_CST_DIR/_N_U_PSEL_SPF")
+   Start(2)
+   H484
+   M33
+   
+   ;-- A1-Achse positionen (Option)
+   if ($MA_CTRLOUT_TYPE[0,AX4]==1) and ($MN_AXCONF_MACHAX_NAME_TAB[3]=="A1")
+      lv_pos_ax_a1=($MA_REFP_SET_POS[0,AX4]-10+360) MOD 360
+      if (lv_pos_ax_a1<0)
+         lv_pos_ax_a1=lv_pos_ax_a1+360
+      endif
+      g53 g0 a1=dc(lv_pos_ax_a1)
+   endif
+ 
+   ;-- Magazinachse in NC Kanal 1 holen und positionieren
+   if (md_p2nuni_opt2b b_and 'h20000000')
+      get(ax7)
+      lv_pos_ax_q=((35-2)*(360/lv_plinmag)) mod 360
+      g153 g0 q4=dc(lv_pos_ax_q)
+   endif
+ 
+   ;-- Achse 6 in NC kanal 1 holen und positionieren (Option) 
+   if (md_p2nuni_opt2b b_and 'h80000000')
+      get(ax6)
+      if (uni[143]==0)
+         lv_pos_ax_q=((uni[142]-1)*(360/uni[142])) mod 360
+      else
+         lv_pos_ax_q=((uni[142]+1)*(360/uni[142])) mod 360
+      endif
+      g153 g0 q6=dc(lv_pos_ax_q)
+   endif
+ 
+   ;-- Achse 9 in NC kanal 1 holen und positionieren (Option) 
+   if (md_p2nuni_opt2b b_and 'h40000000')
+      get(ax9)
+      h842 h852
+      h843 h853
+      h840 h850
+      h841 h851
+      g153 g0 q5=(uni[144] + uni[145])
+      h800 h810
+      h801 h811
+   endif
+
+   ;Hauptachen X, Y und Z in Position
+   g53 g602 y-25 z-25
+   g53 g602 x-200
+endif
+
+
+;-------------------------------
+; H301: Werte aus HI_UNIPORT6 neu 
+;       holen
+If (lv_hnr==301)
+    lv_fct_handled=1
+    HI_UNIPORT6
+EndIf
+
+
+;-------------------------------
+; H303: Arbeitsraumbegrenzung 
+;       aufheben / Maximalwert
+if (lv_hnr==303)
+   lv_fct_handled=1
+   g25 x-99999
+   g26 x99999
+endif
+
+
+;-------------------------------
+; H80xx: Be- und Entladen von
+;        Werkzeugen
+if (lv_hnr>=8001) and (lv_hnr<=8999)
+   
+   lv_plinmag = UNI[70] ;Anzahl Plätze im Magazin
+   lv_corrplmag = UNI[68] ;Korrekturwert Startposition
+   
+   
+   lv_mag_newpos=lv_hnr-8000
+   if (lv_mag_newpos<=lv_plinmag)
+      lv_fct_handled=1
+      if (uni[72]<>0)
+         ;-- X-Achs-Position beim Beladen vorgegeben
+		 
+		 ;-- Z-Achse auf sichere Position, 
+		 ;   danach Y- und X-Achse positionieren
+		 g153 g603 f=uni[50] z=uni[52]
+         g153 g603 y=uni[40]
+         g153 g60 x=uni[72]
+      endIf
+      
+	  lv_chip_pos=lv_mag_newpos
+
+hl_posmag:
+    
+      while ( (lv_chip_pos==md_p2nuni_acttno_spi) or (lv_chip_pos==md_p2nuni_acttno_sld) or (lv_chip_pos==md_p2nuni_acttno_ah1) or (lv_chip_pos==md_p2nuni_acttno_ah2) or (lv_chip_pos==md_p2nuni_acttno_gr1) or (lv_chip_pos==md_p2nuni_acttno_sp1) or (lv_chip_pos==md_p2nuni_acttno_sp2) or (lv_chip_pos==md_p2nuni_acttno_gr2) or (lv_chip_pos==md_p2nuni_acttno_gr3) or (lv_chip_pos==lv_plinmag) or (lv_chip_pos==lv_plinmag-1) or (lv_chip_pos==lv_plinmag-2) or (lv_chip_pos==lv_plinmag-3) )
+         lv_chip_pos=lv_chip_pos+1
+         if (lv_chip_pos>lv_plinmag)
+            lv_chip_pos=lv_chip_pos-lv_plinmag
+         endif
+      endwhile
+      
+	  lv_mag_newpos=lv_chip_pos+lv_corrplmag
+      if (lv_mag_newpos<1)
+         lv_mag_newpos=lv_mag_newpos+lv_plinmag
+      endif
+      if (lv_mag_newpos>lv_plinmag)
+         lv_mag_newpos=lv_mag_newpos-lv_plinmag
+      endif
+      
+	  lv_pos_ax_q=(lv_mag_newpos-1)*(360/lv_plinmag)
+      g153 g0 q4=dc(lv_pos_ax_q)
+      stopre
+  
+      if (pnuni_in_key_mvchain==0)
+         lv_chip_pos=lv_mag_newpos-lv_corrplmag
+         if (lv_chip_pos<1)
+            lv_chip_pos=lv_chip_pos+lv_plinmag
+         endIf
+         h400
+         if $P_TOOLEXIST[lv_chip_pos]
+            h=11000+lv_chip_pos
+         endIf
+         h=10000+lv_chip_pos h490
+         stopre
+         h481
+         h440
+      endif
+     
+	  if Uni[154]==1 gotof hl_end
+     
+	  lv_chip_pos=lv_chip_pos+Uni[69]
+      gotob hl_posmag
+   else
+      lv_chip_pos=lv_mag_newpos
+
+hl_posmag2:
+      ;Werkzeuge in Magazin 2 vorhanden (Option)
+	  if (Uni[142]>0) and (lv_mag_newpos<=lv_plinmag+Uni[142])
+	     if (lv_chip_pos<lv_plinmag+1)
+            lv_chip_pos=lv_chip_pos+lv_plinmag
+         endif
+         if (lv_chip_pos>lv_plinmag+uni[142])
+            lv_chip_pos=lv_chip_pos-uni[142]
+         endif
+         
+		 while ( (lv_chip_pos==md_p2nuni_acttno_spi) or (lv_chip_pos==md_p2nuni_acttno_sld) or (lv_chip_pos==md_p2nuni_acttno_ah1) or (lv_chip_pos==md_p2nuni_acttno_ah2) or (lv_chip_pos==md_p2nuni_acttno_gr1) or (lv_chip_pos==md_p2nuni_acttno_sp1) or (lv_chip_pos==md_p2nuni_acttno_sp2) or (lv_chip_pos==md_p2nuni_acttno_gr2) or (lv_chip_pos==md_p2nuni_acttno_gr3) )
+            lv_chip_pos=lv_chip_pos+1
+            if (lv_chip_pos>lv_plinmag+uni[142])
+               lv_chip_pos=lv_chip_pos-uni[142]
+            endif
+         endwhile
+   
+         lv_mag_newpos=lv_chip_pos-uni[74]
+         if (lv_mag_newpos<lv_plinmag+1)
+            lv_mag_newpos=lv_mag_newpos+uni[142]
+         endif
+         if (lv_mag_newpos>lv_plinmag+uni[142])
+            lv_mag_newpos=lv_mag_newpos-uni[142]
+         endif
+         lv_fct_handled=1
+         
+		 get(q6)
+         lv_pos_ax_q=(lv_mag_newpos-lv_plinmag-1)*(360/uni[142])
+         g153 g0 q6=dc(lv_pos_ax_q)
+         release(q6)
+      else
+         if (uni[143]>0) and (lv_mag_newpos<=lv_plinmag+uni[142]+uni[143])
+            lv_fct_handled=1
+            get(q6)
+            lv_pos_ax_q=(lv_mag_newpos-lv_plinmag-uni[142]-1)*(360/uni[143])
+            g153 g0 q6=dc(lv_pos_ax_q)
+            release(q6)
+         endif
+      endif
+      stopre
+  
+      if (pnuni_in_key_mvchain==0)
+         h400
+         if $p_toolexist[lv_chip_pos]
+            h=11000+lv_chip_pos
+         endif
+         h=10000+lv_chip_pos h493
+         stopre
+         h481
+         h440
+      endif
+      
+	  if Uni[154]==1 gotof hl_end
+      
+	  lv_chip_pos=lv_chip_pos+Uni[75]
+      gotob hl_posmag2
+   endif
+endif
+
+;-------------------------------
+; H9000: Referenzfahrt Magazin
+if (lv_hnr==9000)
+   lv_fct_handled=1
+   get(ax7)
+   g74 q4=0
+   g153 g0 q4=dc(0)
+   release(ax7)
+endif
+
+
+;-------------------------------
+; H90xx: Positionieren Magazin
+if (lv_hnr>=9001) and (lv_hnr<=9999)
+   lv_plinmag = uni[70] ;anzahl plätze im magazin
+   lv_corrplmag = uni[68] ;korrekturwert startposition
+
+   get(ax7)
+   lv_mag_newpos=lv_hnr-9000
+   if (lv_mag_newpos<=lv_plinmag)
+       lv_fct_handled=1
+       lv_pos_ax_q=(lv_mag_newpos-1)*(360/lv_plinmag)
+       g153 g0 q4=dc(lv_pos_ax_q)
+   else
+       if (uni[142]>0) and (lv_mag_newpos<=(lv_plinmag+uni[142]))
+          lv_fct_handled=1
+          get(q6)
+          lv_pos_ax_q=(lv_mag_newpos-lv_plinmag-1)*(360/uni[142])
+          g153 g0 q6=dc(lv_pos_ax_q)
+          release(q6)
+       else
+          if (uni[143]>0) and (lv_mag_newpos<=(lv_plinmag+uni[142]+uni[143]))
+             lv_fct_handled=1
+             get(q6)
+             lv_pos_ax_q=(lv_mag_newpos-lv_plinmag-uni[142]-1)*(360/uni[143])
+             g153 g0 q6=dc(lv_pos_ax_q)
+             release(q6)
+          endif
+       endif
+   endif
+   release(ax7)
+endif
+
+;-------------------------------
+; Keine Funktion bearbeitet
+; -> Fehlermeldung
+if (lv_fct_handled==0)
+   hs_fehler(67010)
+endif
+
+;-------------------------------
+; Zyklusende
+hl_end:
+M17

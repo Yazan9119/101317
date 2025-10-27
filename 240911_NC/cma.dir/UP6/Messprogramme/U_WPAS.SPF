@@ -1,0 +1,25 @@
+;------------------------------------------------
+;Programm zur Vermessung der Maschine 
+;mit Wasserwaage
+;------------------------------------------------
+
+;Nullpunktverschiebung G54
+g54
+
+;Z-Achse in Startstellung
+z-800 f=20000
+m0
+
+hl_axmove:
+;Kettenmaß: Achse immer wieder um 16mm verfahren
+g91 z16 f24000
+stopre
+g4 f10
+
+gotob hl_axmove
+
+;Absolutmaß anwählen
+G90
+
+M17
+

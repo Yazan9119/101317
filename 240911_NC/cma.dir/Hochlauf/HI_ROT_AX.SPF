@@ -1,0 +1,89 @@
+;******************************************
+; Zyklus: HI_ROT_AX
+; - Kanal 1: Hochlauf Ermitteln Rundachsen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Im Hochlauf ermitteln, welche 
+; Rundachsen im System vorhanden sind
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_ROT_AX
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+;
+if ((gd_mtyp >=1000) and (gd_mtyp<=1999))
+   ;-- Hüller Hille NBH
+   ;   B-Achse vorhanden
+   ;   Optional A- oder C-Achse vorhanden
+   gd_ax_a_vorh=false gd_ax_b_vorh=true gd_ax_c_vorh=false 
+   gd_part_kin=false
+   
+   ;-- B-Achse vorhanden (Achse 5)
+   if (toupper($mn_axconf_machax_name_tab[4])=="M_B1")
+      if (toupper($mc_axconf_chanax_name_tab[4])=="B")and($mc_axconf_machax_used[4]==5)
+         gd_ax_b_vorh=true
+         ;Info B-Achse ist Modulo an PLC
+         if ($ma_rot_is_modulo[axname("M_B1")]==1)
+            npmax=npmax b_or 'b1'
+         endif
+      endif
+   endif
+
+   ;-- A-Achse optional vorhanden (Achse 4)
+   if (toupper($mn_axconf_machax_name_tab[3])=="M_A1")
+      if (toupper($mc_axconf_chanax_name_tab[3])=="A")and($mc_axconf_machax_used[3]==4)
+         gd_ax_a_vorh=true
+         ;Info A-Achse ist Modulo an PLC
+         if ($ma_rot_is_modulo[axname("M_A1")]==1)
+            npmax=npmax b_or 'b10000'
+         endif
+         if (a_head_enabled)
+            gd_5th_axis=a
+            gd_part_kin=false
+         endif
+      endif
+   endif 
+   
+   ;-- C-Achse optional vorhanden (Achse 4)
+   if (toupper($mn_axconf_machax_name_tab[3])=="M_C")
+      if (toupper($mc_axconf_chanax_name_tab[3])=="C")and($mc_axconf_machax_used[3]==4)
+         gd_ax_c_vorh=true
+         ;Info C-Achse ist Modulo an PLC
+         if ($ma_rot_is_modulo[axname("M_C")]==1)
+            npmax=npmax b_or 'b10000'
+         endif
+         if (a_head_enabled)
+            gd_5th_axis=c
+            gd_part_kin=false
+         endif
+      endif
+   endif
+endif
+
+if ((gd_mtyp >=2000) and (gd_mtyp<=2999))
+   ;-- Unisign-Maschinen (z.B. Uniport)
+   ;   Optional Drehtische (C-Achse) 
+   gd_ax_a_vorh=false gd_ax_b_vorh=false gd_ax_c_vorh=false 
+   gd_part_kin=false
+   
+   ;!!!GSN: Noch festlegen wenn benötigt
+   
+endif
+
+ret
+
+

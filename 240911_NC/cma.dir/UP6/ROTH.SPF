@@ -1,0 +1,175 @@
+;******************************************
+; Zyklus: ROTH
+; - Kanal 1: Winkelkopf positionieren
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Winkelkopf wird asynchron auf den 
+; vorgegebenen Winkel positioniert.
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus ROTH
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_newangle: Vorgabewinkel Winkelkopf
+; - lv_x_shift: Verschiebung X-Achse
+; - lv_y_shift: Verschiebung Y-Achse
+; - lv_z_shift: Verschiebung Z-Achse
+;
+;******************************************
+
+PROC roth(real lv_newangle, real lv_x_shift, real lv_y_shift, real lv_z_shift) ;displof
+
+def real lv_actangle, lv_tmpr1, lv_tmpr2
+def real lv_ah_posacc
+
+def int lv_posdir, lv_cmdaxdir
+
+;-- Werte aus globalen Parametern holen
+lv_ah_posacc=Uni[10]  ;Positioniergenauigkeit 2,5° / 5°
+
+h430
+stopre
+
+;-- Spindel mit Drehzahl 0 einschalten
+s1=0 M1=3
+
+if ((md_p2nuni_tcmode<>66) and ($p_search==0) and ($p_sim==0))
+   hs_fehler(67900) ;FM: alt=67036
+   gotof hl_end
+endif
+
+;-- Vorgabewinkel prüfen
+if (lv_newangle<-360) or (lv_newangle>=360.0)
+   ;Vorgabewinkel nicht im erlaubten Bereich
+   hs_fehler(67900) ;FM: alt=67038
+   gotof hl_end
+endif
+
+lv_posdir=1 lv_cmdaxdir=-1 lv_actangle=md_p2nuni_ah_angle
+if (lv_newangle<0)
+   lv_posdir=-1 lv_newangle=-lv_newangle mod 360
+endIf
+
+;-- Auf Teilungsposition runden
+lv_tmpr1=lv_actangle/lv_ah_posacc lv_actangle=(round(lv_tmpr1)*lv_ah_posacc)
+lv_tmpr1=lv_newangle/lv_ah_posacc lv_newangle=(round(lv_tmpr1)*lv_ah_posacc)
+
+;-- Koordinatensystem drehen und verschieben
+U_CALCH(1,66,lv_newangle,$P_ToolL[1])
+
+;-- Verschiebungen auf globale Parameter
+Uni[96]=lv_x_shift Uni[97]=lv_y_shift Uni[98]=lv_z_shift
+
+;-- Koordinatensystem drehen und verschieben
+U_CALCH(2,66,lv_newangle,$P_ToolL[1])
+
+;-- Aktueller=Vorgabe-Winkel oder Satzuchlauf oder Simulation -> Zyklusende
+if (lv_actangle==lv_newangle) or ($p_search==1) or ($p_sim==1) gotof hl_end
+
+;-- H569: Prüfen, ob Spanner Winkelkopf eingezogen
+;   H567: Prüfen, ob Winkelkopf / Schutzring durch Spindel aufgenommen
+;   H444: Prüfen, ob Werkzeug in Spindel
+h569 h567 h444
+
+;-- Getriebestufe 1 anwählen, abhängig von Optionen
+if ((md_p2nuni_optmt==106) or (md_p2nuni_optmt==206) or (md_p2nuni_opt1b b_and 'H20')) and (pnuni_in_gear2act==1)
+   m41 ;Spindel Getriebestufe 1
+   m40 ;Spindel Getriebstufe automatisch auswählen
+endif
+
+m501  ;Umschalten Parametersatz
+m525  ;Freigabe Winkelkopf positionieren 
+
+;-- Spindel positionieren
+g153 g60 spos[1]=dc(lv_actangle)
+
+
+;-- H526: Winkelkopf/Schutzring von Spindel ablegen
+;   H527: Prüfen, ob Winkelkopf / Schutzring durch Spindel abgelegt
+;   H502: Vorschub-Beinflussung einschalten
+h526 h527 h502
+
+;Vorschub und Beschleunigung Spindel anpassen
+fa[S1]=7500 acc[S1]=10
+
+;-- H500: Umschalten auf Parametersatz für Winkelkopf drehen
+;   H436: Restweg löschen Kanal 1 freigeben
+h500 h436
+
+;-- Abhängig von notwendigem Verfahrweg und Positionierrichtung den Weg und die Axrichtung bestimmen
+if ((lv_newangle-lv_actangle>0) and (lv_newangle-lv_actangle<=180)) or ((lv_actangle-lv_newangle>0) and (lv_actangle-lv_newangle>=180))
+   if (lv_posdir==1)
+      lv_cmdaxdir=1
+      g153 spos[1]=acp(lv_newangle)
+   else
+      lv_cmdaxdir=0
+      g153 spos[1]=acn(lv_newangle)
+   endif
+else
+   if ((lv_newangle-lv_actangle>0) and (lv_newangle-lv_actangle>180)) or ((lv_actangle-lv_newangle>0) and (lv_actangle-lv_newangle<180))
+      if (lv_posdir==1)
+         lv_cmdaxdir=0
+         g153 spos[1]=acn(lv_newangle)
+      else
+         lv_cmdaxdir=1
+         g153 spos[1]=acn(lv_newangle)
+      endif
+   endif
+endif
+
+
+
+if (pnuni_in_fct_deldstgo==1)
+   h476 ;Restweg löschen Kanal 1 blockieren
+   if lv_cmdaxdir==1
+      g153 spos[1]=acn(lv_actangle)
+   else
+      g153 spos[1]=acp(lv_actangle)
+   endif
+   
+   ;--H-Funktion H4xxxx für Speicher aktuelle Position Winkelkopf
+   ;  H540: Umschalten auf Parametersatz für Spindelbetrieb
+   h=(round(lv_actangle*10)+40000) h540
+   
+   ;-- H566: Winkelkopf / Schutzring durch Hauptspindel aufnehmen 
+   ;   H542: Vorschub-Beeinflussung für Winkelkopf ausschalten
+   h566 h542
+   
+   ;--Vorschub und Beschleunigung Spindel rücksetzen
+   fa[S1]=0 acc[S1]=100
+   
+   ;--H567: Prüfen, ob Winkelkopf / Schutzring durch Hauptspindel aufgenommen
+   h567
+ 
+   m1=5 h565
+   h541
+   
+   hs_fehler(67903)  ;FM  alt: 67049
+endif
+
+h=(round(lv_newangle*10)+40000) h540 h476
+h566 h542
+fa[S1]=0 acc[S1]=100
+h567
+m1=5 h565
+h541
+
+hl_end:
+h=(round(lv_newangle*10)+40000)
+gd_uni_ah_actpos=lv_newangle
+
+h567
+h556
+
+h470
+M17
+

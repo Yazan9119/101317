@@ -1,0 +1,320 @@
+Proc MTOOL(Int MType, Int Correct, Real SSpeed, Real XYOffset, Real ZOffset, Real Feed1, Real Feed2, Int SDir) DisplOf
+ ;05-07-2000
+Def Real CenX
+Def Real CenY
+Def Real SaveL
+Def Real SaveR
+Def Bool IsLaser
+Def Int MRadType
+Def Real Hr1
+Def Real Hr2
+StopRe
+If ($P_TOOLNO==0) GotoF LabErr67005
+If ($P_TOOL==0) GotoF LabErr67006
+If (MType<10) AND ($P_TOOLL[1]==0) GotoF LabErr67021
+If ($P_SEARCH==True) OR ($P_SIM==1) GotoF EndCyc
+If Correct==2
+ H473
+ StopRe
+ If $TC_TPC1[$P_TOOLNO]==0
+  PSEL(NUMBER($TC_TP2[$P_TOOLNO]),$A_DBD[36])
+  U_TOOL($A_DBD[36])
+  GotoF EndCyc
+ EndIf
+EndIf
+IsLaser=FALSE
+If (Uni[113]>=99999) OR (Uni[114]>=99999)
+ IsLaser=TRUE
+ H435
+EndIf
+MRadType=MType
+If MRadType>10
+ MRadType=MRadType-10
+EndIf
+If MRadType>10
+ MRadType=MRadType-10
+EndIf
+tmpI[0]=$P_TOOL
+tmpR[0]=$P_TOOLL[1]
+tmpR[1]=$P_TOOLR
+tmpR[2]=COS(Uni[127]) tmpR[3]=SIN(Uni[127])
+tmpR[9]=Uni[123] tmpI[1]=4 tmpR[6]=0 tmpR[7]=0 CenX=Uni[110] CenY=Uni[111]
+SaveL=tmpR[0] SaveR=tmpR[1]
+If Uni[110]>=99999
+ CenX=$AA_IM[X]
+EndIf
+If Uni[111]>=99999
+ CenY=$AA_IM[Y]
+EndIf
+If (tmpR[0]==0)
+ SaveL=Uni[126]
+EndIf
+If (tmpR[1]==0)
+ SaveR=Uni[125]
+EndIf
+If SDir<>0
+ tmpI[1]=SDir
+EndIf
+If SSpeed>0
+ tmpR[9]=SSpeed
+EndIf
+If Feed1>0
+ tmpR[4]=tmpR[9]*Feed1
+Else
+ tmpR[4]=tmpR[9]*Uni[121]
+EndIf
+If Feed2<>0
+ tmpR[5]=tmpR[9]*Feed2
+Else
+ tmpR[5]=tmpR[9]*Uni[128]
+EndIf
+If SSpeed<0
+ tmpR[9]=0 tmpI[1]=5
+ tmpR[4]=Uni[122] tmpR[5]=0
+EndIf
+If (SSpeed<0) AND (Feed1>0)
+ tmpR[4]=Feed1
+EndIf
+S=tmpR[9] M=tmpI[1]
+G153 G0 G90 G94 D0 Z0
+If $A_DBD[36]==66 GotoF Lab1000
+If (MType<10) GotoF Lab020
+tmpR[9]=XYOffset
+If (MType>=20)
+ tmpR[9]=tmpR[9]+tmpR[1]
+EndIf
+G153 X=(CenX-(tmpR[2]*tmpR[9])) Y=(CenY-(tmpR[3]*tmpR[9]))
+MEAS=Uni[120] G153 G1 Z=(Uni[112]+Uni[129]+SaveL) F=Uni[118]
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+MEAS=Uni[120] G153 G1 Z=(Uni[112]+Uni[119]) F=tmpR[4]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+tmpR[9]=$AA_MM[Z]
+tmpR[6]=tmpR[9]-Uni[112]
+If (tmpR[5]<=0) GotoF Lab010
+G153 G0 Z=(tmpR[9]+Uni[124])
+StopRe
+MEAS=Uni[120] G153 G1 Z=(Uni[112]+Uni[119]) F=tmpR[5]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+tmpR[9]=$AA_MM[Z]
+tmpR[6]=tmpR[9]-Uni[112]
+Lab010: SaveL=tmpR[6]
+If (IsLaser==TRUE) GotoF Lab015
+G153 G0 Z=(tmpR[9]+Uni[129])
+GotoF Lab020
+Lab015: If (MRadType<>1) AND (MRadType<>2) GotoF Lab200
+G153 G1 X=(CenX-(tmpR[2]*(Uni[129]+SaveR+Uni[113]))) Y=(CenY-(tmpR[3]*(Uni[129]+SaveR+Uni[114]))) Z=((Uni[112]-(Uni[115]/2))+ZOffset+SaveL) F=Uni[118]
+Lab020:
+If (MRadType<>1) And (MRadType<>2) GotoF Lab200
+MEAS=Uni[120] G153 G1 X=(CenX-(tmpR[2]*(Uni[129]+SaveR+Uni[113]))) Y=(CenY-(tmpR[3]*(Uni[129]+SaveR+Uni[114]))) F=Uni[118]
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+MEAS=Uni[120] G153 Z=((Uni[112]-(Uni[115]/2))+ZOffset+SaveL)
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+MEAS=Uni[120] G153 X=CenX Y=CenY F=tmpR[4]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+IF (Uni[127]==90) OR (Uni[127]==270) GotoF Lab040
+tmpR[9]=$AA_MM[X]
+If (tmpR[5]<=0) GotoF Lab030
+G153 G0 X=(tmpR[9]-(tmpR[2]*Uni[124]))
+StopRe
+MEAS=Uni[120] G153 G1 X=CenX F=tmpR[5]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+tmpR[9]=$AA_MM[X]
+Lab030:
+If Uni[127]==0
+ tmpR[8]=CenX-Uni[113]
+ tmpR[7]=tmpR[8]-tmpR[9]
+Else
+ tmpR[8]=CenX+Uni[113]
+ tmpR[7]=tmpR[9]-tmpR[8]
+EndIf
+GotoF Lab060
+Lab040:
+tmpR[9]=$AA_MM[Y]
+If (tmpR[5]<=0) GotoF Lab050
+G153 G0 Y=(tmpR[9]-(tmpR[3]*Uni[124]))
+MEAS=Uni[120] G153 G1 Y=CenY F=tmpR[5]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+tmpR[9]=$AA_MM[Y]
+Lab050:
+If Uni[127]==90
+ tmpR[8]=CenY-Uni[114]
+ tmpR[7]=tmpR[8]-tmpR[9]
+Else
+ tmpR[8]=CenY+Uni[114]
+ tmpR[7]=tmpR[9]-tmpR[8]
+EndIf
+SaveR=tmpR[7]
+Lab060: If (IsLaser==TRUE) GotoF Lab070
+G153 G0 X=(CenX-(tmpR[2]*(Uni[129]+SaveR+Uni[113]))) Y=(CenY-(tmpR[3]*(Uni[129]+SaveR+Uni[114])))
+If (MRadType<>2) GotoF Lab070
+MEAS=Uni[120] G153 G1 Z=(Uni[112]+Uni[129]+SaveL) F=Uni[118]
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+MEAS=Uni[120] G153 G1 X=(CenX+(tmpR[2]*(Uni[129]+SaveR+Uni[113]))) Y=(CenY+(tmpR[3]*(Uni[129]+SaveR+Uni[114])))
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+MEAS=Uni[120] G153 Z=((Uni[112]-(Uni[115]/2))+ZOffset+SaveL)
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+Lab070: If (MRadType<>2) GotoF Lab200
+G153 G1 X=(CenX+(tmpR[2]*(Uni[129]+SaveR+Uni[113]))) Y=(CenY+(tmpR[3]*(Uni[129]+SaveR+Uni[114]))) Z=((Uni[112]-(Uni[115]/2))+ZOffset+SaveL) F=Uni[118]
+MEAS=Uni[120] G153 X=CenX Y=CenY F=tmpR[4]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+IF (Uni[127]==90) OR (Uni[127]==270) GotoF Lab090
+tmpR[9]=$AA_MM[X]
+If (tmpR[5]<=0) GotoF Lab080
+G153 G0 X=(tmpR[9]+(tmpR[2]*Uni[124]))
+MEAS=Uni[120] G153 G1 X=CenX F=tmpR[5]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+tmpR[9]=$AA_MM[X]
+Lab080:
+If Uni[127]==180
+ tmpR[8]=CenX-Uni[113]
+ tmpR[5]=tmpR[8]-tmpR[9]
+ Uni[80]=(tmpR[5]-tmpR[7])/2
+Else
+ tmpR[8]=CenX+Uni[113]
+ tmpR[5]=tmpR[9]-tmpR[8]
+ Uni[80]=(tmpR[7]-tmpR[5])/2
+EndIf
+tmpR[7]=(tmpR[7]+tmpR[5])/2
+GotoF Lab110
+Lab090:
+tmpR[9]=$AA_MM[Y]
+If (tmpR[5]<=0) GotoF Lab100
+G153 G0 Y=(tmpR[9]+(tmpR[3]*Uni[124]))
+MEAS=Uni[120] G153 G1 Y=CenY F=tmpR[5]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+tmpR[9]=$AA_MM[Y]
+Lab100:
+If Uni[127]==270
+ tmpR[8]=CenY-Uni[114]
+ tmpR[5]=tmpR[8]-tmpR[9]
+ Uni[80]=(tmpR[5]-tmpR[7])/2
+Else
+ tmpR[8]=CenY+Uni[114]
+ tmpR[5]=tmpR[9]-tmpR[8]
+ Uni[80]=(tmpR[7]-tmpR[5])/2
+EndIf
+tmpR[7]=(tmpR[7]+tmpR[5])/2
+Lab110: If (IsLaser==TRUE) GotoF Lab200
+G153 G0 X=(CenX+(tmpR[2]*(Uni[129]+SaveR+Uni[113]))) Y=(CenY+(tmpR[3]*(Uni[129]+SaveR+Uni[114])))
+Lab200:
+G153 G0 G90 Z0 S0 M1=5
+G153 X=CenX Y=CenY
+GotoF LabReadyCyc
+Lab1000:
+If (Uni[127]==0) AND ($A_DBR[40]<>90) GotoF LabErr67012
+If (Uni[127]==90) AND ($A_DBR[40]<>0) GotoF LabErr67012
+If (Uni[127]==180) AND ($A_DBR[40]<>270) GotoF LabErr67012
+If (Uni[127]==270) AND ($A_DBR[40]<>180) GotoF LabErr67012
+If (MType<10) GotoF LabW020
+G153 X=(CenX-(SIN($A_DBR[40])*(SaveL+Uni[129]))+Uni[20]) Y=(CenY-(COS($A_DBR[40])*(SaveL+Uni[129]))+Uni[21])
+MEAS=Uni[120] G153 G1 Z=(Uni[112]+Uni[22]) F=Uni[118]
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+MEAS=Uni[120] G153 G1 X=(CenX-(SIN($A_DBR[40])*Uni[119])+Uni[20]) Y=(CenY-(COS($A_DBR[40])*Uni[119])+Uni[21]) F=tmpR[4]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+Hr1=CenX-$AA_MM[X]+Uni[20]
+Hr2=CenY-$AA_MM[Y]+Uni[21]
+tmpR[6]=SQRT(POT(Hr1)+POT(Hr2))
+If (tmpR[5]<=0) GotoF LabW010
+G0 G153 X=(CenX-(SIN($A_DBR[40])*(tmpR[6]+Uni[124]))+Uni[20]) Y=(CenY- (COS($A_DBR[40])*(tmpR[6]+Uni[124]))+Uni[21])
+MEAS=Uni[120] G153 G1 X=(CenX-(SIN($A_DBR[40])*Uni[119])+Uni[20]) Y=(CenY-(COS($A_DBR[40])*Uni[119])+Uni[21]) F=tmpR[5]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+Hr1=CenX-$AA_MM[X]+Uni[20]
+Hr2=CenY-$AA_MM[Y]+Uni[21]
+tmpR[6]=SQRT(POT(Hr1)+POT(Hr2))
+LabW010:
+tmpR[6]=tmpR[6]+Uni[158]
+SaveL=tmpR[6]
+If (IsLaser==TRUE) GotoF LabW015
+G0 G153 X=(CenX-(SIN($A_DBR[40])*(tmpR[6]+Uni[129]))+Uni[20]) Y=(CenY-(COS($A_DBR[40]) *(tmpR[6]+Uni[129]))+Uni[21])
+GotoF LabW020
+LabW015:
+If (MRadType<>1) AND (MRadType<>2) GotoF LabW200
+G1 G153 X=(CenX-(SIN($A_DBR[40])*(tmpR[6]-(Uni[115]/2)))+Uni[20]) Y=(CenY-(COS($A_DBR[40])*(tmpR[6]- (Uni[115]/2)))+Uni[21]) Z=(Uni[112]+SaveR+Uni[129]+Uni[22]) F=Uni[118]
+LabW020:
+If (MRadType<>1) And (MRadType<>2) GotoF LabW200
+MEAS=Uni[120] G1 G153 Z=(Uni[112]+SaveR+Uni[129]+Uni[22]) F=Uni[118]
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+MEAS=Uni[120] G1 G153 X=(CenX-(SIN($A_DBR[40])*(tmpR[6]-(Uni[115]/2)))+Uni[20]) Y=(CenY- (COS($A_DBR[40])*(tmpR[6]-(Uni[115]/2)))+Uni[21]) F=Uni[118]
+StopRe
+IF ($AC_MEA[Uni[120]]==1) GotoF LabErr67002
+MEAS=Uni[120] G153 Z=(Uni[112]+Uni[22]) F=tmpR[4]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+tmpR[9]=$AA_MM[Z]
+If (tmpR[5]<=0) GotoF LabW030
+G0 G153 Z=(tmpR[9]+Uni[124])
+MEAS=Uni[120] G153 G1 Z=(Uni[112]+Uni[22]) F=tmpR[5]
+StopRe
+IF ($AC_MEA[Uni[120]]==0) GotoF LabErr67000
+tmpR[9]=$AA_MM[Z]
+LabW030:
+tmpR[7]=tmpR[9]-Uni[112]-Uni[22]+Uni[159]
+SaveR=tmpR[7]
+LabW200:
+G153 G0 G90 Z0 S0 M1=5
+LabReadyCyc:
+MTL=tmpR[6] MTR=tmpR[7]
+If Correct==1 GotoF Lab270
+tmpR[2]=Abs(tmpR[0]-tmpR[6])
+IF (MType>=10) AND (tmpR[2]>Uni[116]) GotoF Broken
+tmpR[2]=Abs(tmpR[1]-tmpR[7])
+IF ((MRadType==1) OR (MRadType==2)) AND (tmpR[2]>Uni[117]) GotoF Broken
+GotoF Lab280
+Lab270:
+If (MType>=10)
+ $TC_DP3[$P_TOOLNO,tmpI[0]]=tmpR[6]
+ $TC_DP12[$P_TOOLNO,tmpI[0]]=0.0
+ $TC_DP21[$P_TOOLNO,tmpI[0]]=0.0
+EndIf
+If (MRadType==1) OR (MRadType==2)
+ $TC_DP6[$P_TOOLNO,tmpI[0]]=tmpR[7]
+ $TC_DP15[$P_TOOLNO,tmpI[0]]=0.0
+EndIf
+Lab280:
+D=tmpI[0]
+If (IsLaser==TRUE)
+ H475
+EndIf
+M17
+LabErr67012: U_SetAl(67012)
+LabErr67002: M1=5
+U_SetAl(67002)
+LabErr67000: StopRe
+G153 G0 Z0 M1=5
+U_SetAl(67000)
+LabErr67005: U_SetAl(67005)
+LabErr67006: U_SetAl(67006)
+LabErr67021: U_SetAl(67021)
+Broken: StopRe
+D=tmpI[0]
+If Correct==2
+ $TC_TPC1[$P_TOOLNO]=0
+ StopRe
+ H433
+ StopRe
+ PSEL(NUMBER($TC_TP2[$P_TOOLNO]),$A_DBD[36])
+ U_TOOL($A_DBD[36])
+ GotoF EndCyc
+EndIf
+SetAl(67007)
+M0
+EndCyc: StopRe
+M17

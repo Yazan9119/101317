@@ -1,0 +1,50 @@
+;******************************************
+; Zyklus: HI_WMK
+; - Kanal 1: Hochlauf 
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Hochlauf Initialisierung Kettenmagazin 
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_WMK
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_wmk save actblocno ;sblof displof
+
+
+;Maximale Werkzeugabmessungen der Maschine
+gd_maxHL        = 0*gd_fact_metr_inch_mm  ;Maximal zulässige Werkzeuglänge
+
+;-- Maschinentyp UNISIGN UNIPORT 6
+if (gd_mtyp==2006)
+   if $MN_USER_DATA_HEX[32] b_and 'B00000001'==0 ;HSK
+      ;Werkzeugaufnahme HSK
+	  gd_maxHL        = 300*gd_fact_metr_inch_mm  ;Maximal zulässige Werkzeuglänge
+      gd_maxHD        = 120*gd_fact_metr_inch_mm  ;Maximal zulässiger Werkzeugdurchmesser
+      gd_maxHH        = 160*gd_fact_metr_inch_mm  ;Maximal zulässige Werkzeughöhe
+    else	
+      ;Werkzeugaufnahme SK / BT	
+      gd_maxHL        = 350*gd_fact_metr_inch_mm  ;Maximal zulässige Werkzeuglänge
+      gd_maxHD        = 120*gd_fact_metr_inch_mm  ;Maximal zulässiger Werkzeugdurchmesser
+      gd_maxHH        = 160*gd_fact_metr_inch_mm  ;Maximal zulässige Werkzeughöhe
+   endif
+endif
+
+ret
+
+
+

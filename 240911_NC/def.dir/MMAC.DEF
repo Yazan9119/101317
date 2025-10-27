@@ -1,0 +1,682 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 1550 | Last Changed Author: stj | Last Changed Date: 2024-05-06 11:06:00 +0200 (Mo, 06 Mai 2024) 
+;X-Systemzyklen
+
+define M02 as M30
+
+;Geberinformationen
+define npms1_anw          as $a_dbd[0]                                  ;Bitleiste angewähltes Messsystem1
+define npms2_anw          as $a_dbd[4]                                  ;Bitleiste angewähltes Messsystem2
+define npaktsiax          as $a_dbd[8]                                  ;Bitleiste Safety angewählt
+define npmax              as $a_dbb[16]                                 ;Bitleiste Moduloachsen
+define npaxmotiondir      as $a_dbd[24]                                 ;Bitleiste Verfahrrichtungrichtung Achsen
+define npsimax            as $a_dbd[28]                                 ;Bitleiste Simulationsachse
+define npms1_inc          as $a_dbd[36]                                 ;Bitleiste incrementelles Messsystem1
+
+define pnax_cl            as $a_dbb[17]                                 ;Bitleiste Achsen Klemmautomatik
+define pnax_b_cl          as $a_dbb[17] b_and 'b1'                      ;Achse B Klemmautomatik ein
+define pnax_c_cl          as $a_dbb[17] b_and 'b100'                    ;Achse C Klemmautomatik ein
+define pnax_a_cl          as $a_dbb[17] b_and 'b10000'                  ;Achse A Klemmautomatik ein
+define si_stored_autoclamp  as syg_im[45]                               ;Zustand Klemmautomatik gespeichert
+define sb_cycle832_selected as syg_bm[77]                               ;cycle832 angewählt
+define si_stored_techcyc    as syg_im[47]                               ;Zustand Klemmautomatik gespeichert
+define sb_techcyc_selected  as syg_bm[79]                               ;HELLER-Technologiezyklus angewählt
+define m232               as m204 m205 m206                             ;Klemmautomatik ein alle Schwenkachsen
+define m272               as m244 m245 m246                             ;Klemmautomatik aus alle Schwenkachsen
+
+;Hydraulische Werkstückspannung
+define pnspdristw         as $a_dbw[32]                                 ;Istwert Spanndruck HWSP prop. (M 35)
+define npspdrma           as $a_dbw[34]                                 ;Sollwert Spanndruck HWSP prop. (M 35)          
+
+;Maschine in Grundstellung
+define i_home             as $a_in[12]                                  ;Maschine in Grundposition
+
+;C-Kopf, Tilt-Kopf
+define c_head_enabled       as (($mn_user_data_hex[11] b_and 'b10')>0)
+define a_head_enabled       as (($mn_user_data_hex[11] b_and 'b100000')>0)
+
+;Schwenkbrücke
+define a_swbr_enabled       as (($mn_user_data_hex[12] b_and 'b10000')>0)
+
+;Bremsentest
+define pnanf_sbt_ar       as  (($a_dbb[42] b_and 'b1')>0)               ;Anforderung Bremsentest Arbeitsraum
+define pnanf_sc           as  (($a_dbb[42] b_and 'b10000')>0)           ;Anforderung Spindeltest
+define pnanf_ac           as  (($a_dbb[42] b_and 'b100000')>0)          ;Anforderung Achstesttest
+define npfrg_sbt          as  $a_dbb[43]                                ;Freigabe Bremsentest
+define npfrg_sbt_ar       as  ($a_dbb[43] b_or 'b1')                    ;Freigabe Bremsentest Arbeitsraum
+define npfrg_sc           as  ($a_dbb[43] b_or 'b10000')                ;Freigabe Spindeltest
+define npfrg_ac           as  ($a_dbb[43] b_or 'b100000')               ;Freigabe Achstest
+define ac_enabled         as ($mn_user_data_hex[195] b_and 'b10')       ;AxesCondition
+define sc_enabled         as ($mn_user_data_hex[195] b_and 'b100')      ;SpindleCondition
+
+;Aktive Betriebsart
+define i_auto             as (($a_dbb[44] b_and 'b10')<>0)              ;Aktive Betriebsart ist Automatik
+define i_mda              as (($a_dbb[44] b_and 'b100')<>0)             ;Aktive Betriebsart ist MDA
+define i_teachin          as (($a_dbb[44] b_and 'b1000')<>0)            ;Aktive Betriebsart ist Teachin
+define i_jog              as (($a_dbb[44] b_and 'b10000')<>0)           ;Aktive Betriebsart ist JOG
+define i_ref              as (($a_dbb[44] b_and 'b100000')<>0)          ;Aktive Betriebsart ist REF
+define i_repos            as (($a_dbb[44] b_and 'b1000000')<>0)         ;Aktive Betriebsart ist Repos
+define ib_ncbag           as $a_dbb[44]
+
+;Betriebsartenwechselsperre
+define npbea              as $a_dbb[347]
+define npbeawsp           as $a_dbb[347]=$a_dbb[347] b_or 'b1'          ;Betriebsartenwechselsperre
+
+;Translinefunktionen
+define i_vk               as (($a_dbb[45] b_and 'b1')<>0)               ;Verketteter Betrieb
+define i_eb               as (($a_dbb[45] b_and 'b10')<>0)              ;Einzelbetrieb
+define i_es               as (($a_dbb[45] b_and 'b100')<>0)             ;Einzelschritt
+define i_er               as (($a_dbb[45] b_and 'b1000')<>0)            ;Einrichtbetrieb
+define ib_bag             as $a_dbb[45]
+
+;Maschinenzustände 1
+define i_leerf              as (($a_dbb[46] b_and 'b1')<>0)               ;Leerfahren
+define i_leert              as (($a_dbb[46] b_and 'b10')<>0)              ;Leertakten
+define i_trazyk             as (($a_dbb[46] b_and 'b100')<>0)             ;Transportzyklus
+define i_beazyk             as (($a_dbb[46] b_and 'b1000')<>0)            ;Bearbeitungszykl
+define i_gstf               as (($a_dbb[46] b_and 'b10000')<>0)           ;Grundstellung fahren
+define i_wzwf               as (($a_dbb[46] b_and 'b100000')<>0)          ;WZW-Stell. anfahren
+define i_hte                as (($a_dbb[46] b_and 'b1000000')<>0)         ;Halt nach Taktende
+define i_obea               as (($a_dbb[46] b_and 'b10000000')<>0)        ;Ohne Bearbeitung
+define ib_bag_fct1          as $a_dbb[46]
+
+;Maschinenzustände 2
+define i_bahnf              as (($a_dbb[47] b_and 'b1')<>0)               ;Bahnfahren
+define i_mesmf              as (($a_dbb[47] b_and 'b10')<>0)              ;Messmittelfähigkeit
+define i_meas               as (($a_dbb[47] b_and 'b10')<>0)              ;Messmittelfähigkeit
+define i_cont_run           as (($a_dbb[47] b_and 'b100')<>0)             ;Dauerlauf
+define i_manload            as (($a_dbb[47] b_and 'b1000')<>0)            ;manuelle Beladung ohne Automation
+define i_m1_select          as (($a_dbb[47] b_and 'b10000')<>0)           ;M01 angewählt
+define i_wptyp_change       as (($a_dbb[47] b_and 'b100000')>0)
+define i_wup                as (($a_dbb[47] b_and 'b1000000')>0)          ;Warmlaufprogramm
+define i_prod_start         as (($a_dbb[47] b_and 'b10000000')<>0)        ;Produktionsstart
+define ib_bag_fct2          as $a_dbb[47]
+
+;sichere Betriebsarten
+define pnmo1Angw            as (($a_dbb[50] b_and 'b1')>0)                ;Betriebsart 1 angewählt
+define pnmo2Angw            as (($a_dbb[50] b_and 'b10')>0)               ;Betriebsart 2 angewählt
+define pnmo3Angw            as (($a_dbb[50] b_and 'b100')>0)              ;Betriebsart 3 angewählt
+define pnmoMTAngw           as (($a_dbb[50] b_and 'b1000')>0)             ;Betriebsart 5 für Betreiber angewählt
+define pnmoSEAngw           as (($a_dbb[50] b_and 'b10000')>0)            ;Betriebsart 5 für Hersteller angewählt
+define pnhyPnBewAngw        as (($a_dbb[50] b_and 'b10000000')>0)         ;Betriebsart hydraulisch pneumatische Bewegungen angewählt
+define pnba_angw            as $a_dbb[50]
+
+;Temperaturkompensation
+define m_h2nitc_act         as (($a_dbb[51] b_and 'b1')>0)                ;ITC ist aktiv und liefert gültige Werte
+define pnspila_temp         as $a_dbw[52]                                 ;Temperatur Spindellager
+define npITC                as $a_dbb[57]                                 ;Temperaturkompensation
+define npITC_kompaender     as $a_dbb[57]=$a_dbb[57] b_or 'b1'            ;Kompensationswert Temperatur geändert
+define npITC_ok             as $a_dbb[57]=$a_dbb[57] b_or 'b10'           ;alle Komponenten aktiv und ok
+define npICS_kompaender     as $a_dbb[57]=$a_dbb[57] b_or 'b100'          ;Kompensationswert geändert
+define pnxax_temp           as $a_dbw[58]                                 ;Temperatur X-Achse Bett
+define pnyax_temp           as $a_dbw[60]                                 ;Temperatur Y-Achse
+define pnzax_temp           as $a_dbw[62]                                 ;Temperatur Z-Achse
+define pnspigetr_temp       as $a_dbw[74]                                 ;Temperatur Spindelgetriebe
+define pnrlttemp            as $a_dbw[78]                                 ;Temperatur Rundlauftisch
+define pntemp_raum          as $a_dbw[90]                                 ;Raumtemperatur
+;Solltaktzeit
+define ow_cyc_time          as $a_dbw[92]                                 ;Solltaktzeit
+
+;Span-zu-Span-Zeit-Diagnose
+define npssz_diag           as $a_dbb[94]                                 ;Start der SSZ-Diagnose
+
+;ASUP Kanal 1
+define pnocodeasup          as $a_dbb[100]                                ;Operationscode für ASUP's in Kanal 1
+define pnasuppara1          as $a_dbb[101]                                ;1. Aufrufparameter für ASUP in Kanal 1
+define pnasuppara2          as $a_dbb[102]                                ;2. Aufrufparameter für ASUP in Kanal 1
+define pnasuppara3          as $a_dbb[103]                                ;3. Aufrufparameter für ASUP in Kanal 1
+define pnasuppara4          as $a_dbd[104]                                ;4. Aufrufparameter für ASUP in Kanal 1
+define npnasupk1_sema       as $a_dbb[109]                                ;Semaphore für Datenübertragung Parameter ASUP Kanal 1
+
+;ASUP Kanal 2
+define pnocodasupk2         as $a_dbb[121]                                ;Operationscode für ASUP's in Kanal 2
+define pnasuppara1_k2       as $a_dbb[122]                                ;1. Aufrufparameter (Byte) für ASUP in Kanal 2
+define pnasuppara2_k2       as $a_dbb[123]                                ;2. Aufrufparameter (Byte) für ASUP in Kanal 2
+define pnasuppara3_k2       as $a_dbb[124]                                ;3. Aufrufparameter (Byte) für ASUP in Kanal 2
+define pnasuppara4_k2       as $a_dbb[125]                                ;4. Aufrufparameter (Byte) für ASUP in Kanal 2
+define pnasuppara5_k2       as $a_dbb[126]                                ;4. Aufrufparameter (Byte) für ASUP in Kanal 2
+define pnasuppara6_k2       as $a_dbb[127]                                ;4. Aufrufparameter (Byte) für ASUP in Kanal 2
+define pnasuppara7_k2       as $a_dbb[128]                                ;4. Aufrufparameter (Byte) für ASUP in Kanal 2
+define pnasuppara8_k2       as $a_dbb[129]                                ;4. Aufrufparameter (Byte) für ASUP in Kanal 2
+define pnasuppara9_k2       as $a_dbb[130]                                ;4. Aufrufparameter (Byte) für ASUP in Kanal 2
+
+define npnasupk2_sema       as $a_dbb[132]                                ;Semaphore für Datenübertragung Parameter ASUP Kanal 2
+
+;MMS
+define npmmsprog            as $a_dbb[330]                                ;MMS Programmnummer
+
+;WZW-Schnittstelle NC->NC
+define n_asup_k1            as $a_in[8]                                   ;ASUP Kanal1 von NC                                              
+define n_asupout_k1         as $a_out[12]                                 ;ASUP Kanal1 von NC ausgelöst
+
+;WZW-Schnittstelle NC->PLC
+define nptcs_frg          as $a_out[8]                                  ;Freigabe TCS-Taste
+define npnbst_wdh         as $a_out[13]                                 ;WZ-Bereitstellung wiederholen
+define npnbst_akt         as $a_out[16]                                 ;WZ-Bereitstellung aktiv
+define npnbst_ok          as $a_out[22]                                 ;WZ Bereitstellung war erfogreich
+define npwzw_gstf_akt     as $a_out[10]                                 ;WZW Grundstellungsfahren ist aktiv
+define npwzr_akt          as $a_out[11]                                 ;WZ-Reinigung ist aktiv
+define npwzw_akt          as $a_out[14]                                 ;WZW ist aktiv
+define npwzw_langs        as $a_out[15]                                 ;Werkzeugwechselgeschwindigkeit 0:schnell 1:langsam
+
+;m60-Zyklus aktiv
+define o_m60_aktiv        as $a_out[17]                                 ;m60 aktiv
+define o_wpc_aktiv        as $a_out[9]                                  ;Werkstückwechsel aktiv
+
+;Werkstückwechsler
+define ib_wp_fct                as $a_dbb[250]
+define i_wp_clamped             as (($a_dbb[250] b_and 'b1')<>0)       ;Werkstück gespannt
+define i_wp_released            as (($a_dbb[250] b_and 'b100')<>0)     ;Werkstück gelöst
+define i_wp_location_check_io   as (($a_dbb[250] b_and 'b10000')<>0)   ;Auflagenkontrolle i.O.
+define i_wp_location_check_nio  as (($a_dbb[250] b_and 'b100000')<>0)  ;Auflagenkontrolle n.i.O.
+define i_wp_location_hmi_quit   as (($a_dbb[250] b_and 'b1000000')<>0) ;WST-Auflage über HMI quittiert
+
+define ib_wp_clamp_act    as $a_dbb[252]
+define i_wp_clamp1_act    as (($a_dbb[252] b_and 'b1')<>0)
+define i_wp_clamp2_act    as (($a_dbb[252] b_and 'b10')<>0)
+define i_wp_clamp3_act    as (($a_dbb[252] b_and 'b100')<>0)
+define i_wp_clamp4_act    as (($a_dbb[252] b_and 'b1000')<>0)
+define i_wp_clamp5_act    as (($a_dbb[252] b_and 'b10000')<>0)
+define i_wp_clamp6_act    as (($a_dbb[252] b_and 'b100000')<>0)
+define i_wp_clamp7_act    as (($a_dbb[252] b_and 'b1000000')<>0)
+define i_wp_clamp8_act    as (($a_dbb[252] b_and 'b10000000')<>0)
+
+define ib_wp_clamp_rel    as $a_dbb[254]
+define i_wp_clamp1_rel    as (($a_dbb[254] b_and 'b1')<>0)
+define i_wp_clamp2_rel    as (($a_dbb[254] b_and 'b10')<>0)
+define i_wp_clamp3_rel    as (($a_dbb[254] b_and 'b100')<>0)
+define i_wp_clamp4_rel    as (($a_dbb[254] b_and 'b1000')<>0)
+define i_wp_clamp5_rel    as (($a_dbb[254] b_and 'b10000')<>0)
+define i_wp_clamp6_rel    as (($a_dbb[254] b_and 'b100000')<>0)
+define i_wp_clamp7_rel    as (($a_dbb[254] b_and 'b1000000')<>0)
+define i_wp_clamp8_rel    as (($a_dbb[254] b_and 'b10000000')<>0)
+
+define ib_wp_ctrl_ack     as $a_dbb[256]
+define i_wp_ctrl1_ack     as (($a_dbb[256] b_and 'b1')<>0)
+define i_wp_ctrl2_ack     as (($a_dbb[256] b_and 'b10')<>0)
+define i_wp_ctrl3_ack     as (($a_dbb[256] b_and 'b100')<>0)
+define i_wp_ctrl4_ack     as (($a_dbb[256] b_and 'b1000')<>0)
+
+
+;SBBK
+define npmess_soll        as $a_dbw[340]                                ;SBBK Sollwert
+define npmess_tol         as $a_dbw[344]                                ;SBBK Toleranz
+define pnmess_ist         as $a_dbw[348]                                ;SBBK Istwert
+
+define npsbbk             as $a_dbb[350]
+define npsbbk_mess        as (($a_dbb[350] b_and 'b1')<>0)              ;Messenauftrag SBBK
+define pnsbbk_messok      as (($a_dbb[350] b_and 'b10')<>0)             ;Messung ok
+define pnsbbk_messnok     as (($a_dbb[350] b_and 'b100')<>0)            ;Messung nok
+
+define mb_ch12ch2sbbk_angef   as $a_dbb[351]                                ;Info Kanal1->Kanal2 SBBK angefordert
+
+define pnsbbkt_nok        as (($a_dbb[352] b_and 'b1')<>0)              ;Teachen für das bereitgestellte Werkzeug ist fehlgeschlagen
+
+define pnbple_wzw_laeuft  as (($a_dbb[359] b_and 'b1')<>0)              ;Bereitstellungsplatz leeren nach WZW läuft
+define pnoldtool_ung      as (($a_dbb[359] b_and 'b10')<>0)             ;Info OldTool aus DB72 ist ungültig
+
+define nprp_wst           as $a_dbw[20]                                 ;Abstand Rüstplatz zu Wechselstelle
+
+
+;Softwareendschalterumschaltung
+define npswe_lin  as $a_dbb[288] 
+define npswe_rot  as $a_dbb[289]
+define si_swe_tc  as syg_im[96]
+define si_swe_wpc as syg_im[97]
+define npswe1_wzw         as npswe_lin=npswe_lin b_and (b_not si_swe_tc);auf SWE1 für Arbeitsraum umschalten
+define npswe2_wzw         as npswe_lin=npswe_lin b_or si_swe_tc         ;auf SWE2 für Werkzeugwechsel unmschalten
+define npswe1_wpc         as npswe_lin=npswe_lin b_and (b_not si_swe_wpc);auf SWE1 für Arbeitsraum umschalten
+define npswe2_wpc         as npswe_lin=npswe_lin b_or si_swe_wpc         ;auf SWE2 für Werkstückwechsel unmschalten
+
+define npwzwvse           as $a_dbb[366]                                ;Freigabe Verschiebeeinrichtung                     
+define npwzw_vse_ok_ef    as $a_dbb[366]=$a_dbb[366] b_or 'b1'          ;Freigabe Verschiebeeinrichtung für Einzelfunktionen
+define npwzw_vse_ok_auto  as $a_dbb[366]=$a_dbb[366] b_or 'b10'         ;Freigabe Verschiebeeinrichtung für Automatikbetrieb
+
+define npwzw_wzwt         as $a_dbb[372]  
+define npwzwt_of          as $a_dbb[372] ='b1'                          ;WZWtür oeffnen
+define npwzwt_sl          as $a_dbb[372] ='b10'                         ;WZWtür schliessen
+
+define npvssueb           as $a_dbb[373]                                ;Vorschusperren durch NC überbrücken
+define npvssueb_wzw       as $a_dbb[373]=$a_dbb[373] b_or 'b1'          ;Vorschubsperre Wechslerachsen überbrücken
+define npvssueb_beaax     as $a_dbb[373]=$a_dbb[373] b_or 'b10'         ;Vorschubsperre Bearbeitungsachsen überbrücken
+define npvssueb_spi       as $a_dbb[373]=$a_dbb[373] b_or 'b100'        ;Vorschubsperre Spindel überbrücken
+define npvssueb_pz        as $a_dbb[373]=$a_dbb[373] b_or 'b1000'       ;Vorschubsperre Planzug überbrücken
+
+;WZW-Schnittstelle PLC->NC
+define pnwzspi_gl         as (($a_dbb[374] b_and 'b1')<>0)              ;Werkzeug in Spindel gelöst (bei ATC100XHD incl. Medien und Greifer Spindel gelöst)
+define pnwzspi_gsp        as (($a_dbb[374] b_and 'b10')<>0)             ;Werkzeug in Spindel gespannt (bei ATC100XHD incl. Medien und Greifer Spindel gespannt)
+define pnwzspi_gspoa      as (($a_dbb[374] b_and 'b100')<>0)            ;Werkzeug gespannt ohne durch PLC angesteuerten Ausgang
+define pnwzwt_halbgof     as (($a_dbb[374] b_and 'b1000')<>0)           ;WZWTür ist halb offen (CT kann einschwenken)
+define pnwzwt_gof         as (($a_dbb[374] b_and 'b10000')<>0)          ;WZWTür ist offen
+define pnwzw_vorverr      as (($a_dbb[374] b_and 'b100000')<>0)         ;Werkzeugwechsler Vorverriegelung ist verriegelt
+define pnwzw_entr         as (($a_dbb[374] b_and 'b1000000')<>0)        ;Werkzeugwechsler Vorverriegelung ist entriegelt
+define pnwz_ko            as (($a_dbb[374] b_and 'b10000000')<>0)       ;Kollisionsüberwachung aus
+
+define pnwzwt_gs          as (($a_dbb[399] b_and 'b1')<>0)              ;Werkzeugwechseltür ist geschlossen
+define pnvse_bp           as (($a_dbb[399] b_and 'b10')<>0)             ;VSE am BP
+define pnvse_mag          as (($a_dbb[399] b_and 'b100')<>0)            ;VSE im Mag
+
+define npdatsch           as $a_dbb[376]                                ;WZ-Daten umspeichern
+define npspi_gr1          as $a_dbb[376]=$a_dbb[376] b_or 'b1'          ;WZ-Daten umspeichern von SPI->Greifer1
+define npspi_gr2          as $a_dbb[376]=$a_dbb[376] b_or 'b10'         ;WZ-Daten umspeichern von SPI->Greifer2
+define npgr1_spi          as $a_dbb[376]=$a_dbb[376] b_or 'b100'        ;WZ-Daten umspeichern von Greifer1->SPI
+define npgr2_spi          as $a_dbb[376]=$a_dbb[376] b_or 'b1000'       ;WZ-Daten umspeichern von Greifer2->SPI
+define npbp_gr1           as $a_dbb[376]=$a_dbb[376] b_or 'b10000'      ;WZ-Daten umspeichern von BP->Greifer1
+define npbp_gr2           as $a_dbb[376]=$a_dbb[376] b_or 'b100000'     ;WZ-Daten umspeichern von BP->Greifer2
+define npgr1_bp           as $a_dbb[376]=$a_dbb[376] b_or 'b1000000'    ;WZ-Daten umspeichern von Greifer1->BP
+define npgr2_bp           as $a_dbb[376]=$a_dbb[376] b_or 'b10000000'   ;WZ-Daten umspeichern von Greifer2->BP
+
+define npdatsch_sync      as $a_dbb[377]                                ;WZ-Daten umspeichern Synchronisationsbit
+define npspiwz            as $a_dbb[346]                                ;NC-Info über Werkzeug in Spindel
+define nppzinspi          as $a_dbb[346]=$a_dbb[346] b_or 'b10'         ;WZ: NC-Info Spindel Planzugwerkzeug in Spindel
+define npkpzinspi         as $a_dbb[346]=$a_dbb[346] b_and b_not 'b10'  ;WZ: NC-Info Spindel kein Planzugwerkzeug in Spindel
+
+;Planzug
+define pnpze_zust         as $a_dbb[378]                                ;Zustände Planzug
+
+define pndir_cm           as $a_dbw[380]                                ;Drehrichtung CM-Achse
+define npnbstwdh_erl      as $a_dbb[382]                                ;ASUP Bereitstellung wiederholen kann ausgeführt werden
+define npnbstwdh_loe      as $a_dbb[382]=$a_dbb[396] b_or 'b10'         ;Bereitstellung wiederholen löschen
+
+define npmagpos_ist       as $a_dbw[384]                                ;Istposision CM
+define npbrpos_ist        as $a_dbw[386]                                ;Istposision BR
+define npbppos_ist        as $a_dbw[388]                                ;Istposision BP
+
+define npmymln_bp         as $a_dbw[390]                                ;Rückkehrplatz des Werkzeugs auf dem BP
+
+;Magazinnutzungsrecht
+define npanfmagnur_ma     as $a_dbb[396]                                ;Anforderung Nutzungsrecht Werkzeugwechsel
+define npanf_magnur_wzw   as $a_dbb[396]=$a_dbb[396] b_or 'b1'          ;Anforderung Nutzungsrecht Werkzeugwechsel
+define npanf_magnur_wzw1  as $a_dbb[396]=$a_dbb[396] b_or 'b10'         ;Anforderung Nutzungsrecht Werkzeugwechsel
+define npack_dsle_unter   as $a_dbb[396]=$a_dbb[396] b_or 'b100'        ;DSLE unterbrechen erlaubt
+define pnmagnur_ma        as $a_dbb[397]                                ;Magazinnutzungsrecht Werkzeugwechsel 
+define pnmagnur_ma_wzw    as (($a_dbb[397] b_and 'b1')<>0)              ;Magazinnutzungsrecht Werkzeugwechsel 
+define pnmagnur_ma_wzw1   as (($a_dbb[397] b_and 'b10')<>0)             ;Magazinnutzungsrecht Werkzeugwechsel 
+define pnreq_dsle_unter   as (($a_dbb[397] b_and 'b100')<>0)            ;Anforderung DSLE unterbrechen für WZW
+
+;Pickup
+define nppickup           as $a_dbb[218]                                ;Pickup
+define nptpu_akt          as $a_dbb[218]=$a_dbb[218] b_or 'b1'          ;Pickup von Palette ist aktiv
+define nphpu_akt          as $a_dbb[218]=$a_dbb[218] b_or 'b10'         ;Handpickup ist aktiv
+
+define npwz_auss          as $a_out[18]                                 ;Werkzeug aussaugen
+define npscha_abbl        as $a_out[19]                                 ;Werkzeugschaft abblasen
+define npmsk_abbl         as $a_out[20]                                 ;MKS abblasen
+
+define nptpu_gst          as $a_out[21]                                 ;Pickup in Grundstellung
+define nppz_gst_akt       as $a_out[27]                                 ;Planzug freifahren aktiv
+
+;Einrichtefunktionen
+define pnerf              as $a_dbb[48]                                 ;Maske Einrichtefunktionen aktiv
+define npbedftext         as $a_dbw[324]                                ;Bedienerführungstext
+
+;Hochlauf
+define nphlk1_end         as $a_dbb[12]=$a_dbb[12] b_or 'b1'            ;Hochlauf Kanal1 fertig
+define npgb_anw           as $a_dbb[12]=$a_dbb[12] b_or 'b10'           ;Geber anwählen
+define pnfrghlk1          as (($a_dbb[13] b_and 'b1')<>0)               ;Hochlauffreigabe Kanal1
+define pngb_angw          as (($a_dbb[13] b_and 'b10')<>0)              ;Geber sind angewählt
+define pninik1_ok         as (($a_dbb[13] b_and 'b1000')<>0)            ;Steuerungshochlauf Kanal1 ok
+define nphlk2_end         as $a_dbb[14]=$a_dbb[14] b_or 'b1'            ;Hochlauf Kanal2 fertig
+define pnfrghlk2          as (($a_dbb[15] b_and 'b1')<>0)               ;Hochlauffreigabe Kanal2
+
+;2.Kanal
+define gm_bag1            as $a_dbb[44] ;BAG1
+;Tiefenmerker Kanal1
+define sr_step            as syg_rm[5]
+define sr_step1           as syg_rm[6]
+define sr_step2           as syg_rm[7]
+define set_step           as when true do syg_rm[5]
+define set_step1          as when true do syg_rm[6]
+define set_step2          as when true do syg_rm[7]
+                  
+;Wechslerachsen           
+define sr_ct1_pos         as syg_rm[8]
+define sr_zt1_pos         as syg_rm[9]
+define sr_xt_pos              as syg_rm[17]
+define sr_x_pos           as syg_rm[14]
+define sr_y_pos           as syg_rm[4]
+define sr_z_pos               as syg_rm[16]
+;Einrichtefunktionen
+define npausfb            as $a_dbw[326]                                ;Ausführbarkeit von Einrichtefunktionen
+
+;Simulator
+define pnsim              as (($a_dbb[49] b_and 'b1')<>0)               ;Maschine ist Simulator
+
+define si_wzw_stat        as syg_im[3]                                  ;Zustand cs_tool
+define si_wzw_richt       as syg_im[4]                                  ;Drehrichtung Werkzeugwechsler
+define si_wpc_stat        as syg_im[6]                                  ;Zustand Werkstückwechsler
+define si_tpu_stat        as syg_im[23]                                 ;Status Pickup
+
+define si_emergency_relais1 as syg_im[19]                                 ;Status Not-Aus-Relais1
+define si_emergency_relais2 as syg_im[20]                                 ;Status Not-Aus-Relais2
+
+;zusätzliche Softwarenocken
+define si_swn1            as syg_im[10]                                 ;zusätzliche Softwarenocken
+define npswn1             as $a_dbb[367]                                ;zusätzliche Softwarenocken
+define npswn_x_kolli_tuer as syg_im[10]=syg_im[10] b_or 'b1000000'      ;X-Achse bzw. übergrosses WZ kollidiert mit WZW-Tür
+
+define si_swn3            as syg_im[30]                                 ;zusätzliche Softwarenocken
+define npswn3             as $a_dbw[392]                                ;zusätzliche Softwarenocken
+define npswn_zt_gst_wpos  as syg_im[30]=syg_im[30] b_or 'b1'            ;ZT1 zw. GST und Wechselpos
+define npswn_Y_wzwpos_nok as syg_im[30]=syg_im[30] b_or 'b10'           ;Position Y-Achse  für WZW ungültig
+define npswn_WZ_uegross   as syg_im[30]=syg_im[30] b_or 'b100'          ;Spindelwerkzeug ist übergross
+define npswn_Y_TCPos      as syg_im[30]=syg_im[30] b_or 'b10000000000'  ;Y-Achse auf Wechselposition (Überhub)
+define npswn_aarbraum     as syg_im[30]=syg_im[30] b_or 'b100000000000' ;Achsen im Arbeitsraum
+define npswn_ct_wzwt      as syg_im[30]=syg_im[30] b_or 'b1000000000000';CT-Achse in Bereich für Werkzeugwechseltür schliessen
+define npswn_vseok        as syg_im[11]=syg_im[11] b_or 'b10000000000000';CT-Achse von Spindel bzw. VSE abgehoben. Spindel kann drehen, VSE kann fahren
+define npswn_spifrei      as syg_im[11]=syg_im[11] b_or 'b100000000000000';X-Achse von Spindel so weit weg, dass Spindel drehen kann.
+
+define si_swn_wzw2        as syg_im[37]   ;Softwarenocken WZW Regal 2
+define npswn_wzw2         as $a_dbw[262]
+define npswn_zt_0         as syg_im[37]=syg_im[37] b_or 'b1'               ;ZT-Achse Grundstellung, F_H:Übergabepos Spindel vor WZW; HF:Übergabeposition Magazin, beide Greifer entriegelt
+define npswn_zt_1         as syg_im[37]=syg_im[37] b_or 'b10'              ;ZT-Achse beide Greifer verriegelt Start WZW
+define npswn_zt_2         as syg_im[37]=syg_im[37] b_or 'b100'             ;ZT-Achse Übergabepos Spindel F_H:nach WZW; HF:vor WZW, spindelseitiger Greifer entriegelt
+define npswn_zt_3         as syg_im[37]=syg_im[37] b_or 'b1000'            ;(nur ATC_WMR) ZT-Achse Schwenkposition
+define npswn_zt_4         as syg_im[37]=syg_im[37] b_or 'b10000'           ;(nur ATC_WMR) ZT-Achse Übergabepos Spindel nach WZW, spindelseitiger Greifer entriegelt
+define npswn_zt_5         as syg_im[37]=syg_im[37] b_or 'b100000'          ;(nur ATC_WMR) ZT-Achse beide Greifer verriegelt nach WZW
+define npswn_zt_6         as syg_im[37]=syg_im[37] b_or 'b1000000'         ;(nur ATC_WMR) ZT-Achse beide Greifer entriegelt
+define npswn_zt_spann     as syg_im[37]=syg_im[37] b_or 'b10000000'        ;ZT-Achse im Spannbereich
+define npswn_ct_0         as syg_im[37]=syg_im[37] b_or 'b100000000'       ;CT-Achse in Grundstellung  Greifer 1 ist oben 
+define npswn_ct_1         as syg_im[37]=syg_im[37] b_or 'b1000000000'      ;CT-Achse ist eingeschwenkt Greifer 1 ist auf Spindel 
+define npswn_ct_2         as syg_im[37]=syg_im[37] b_or 'b10000000000'     ;CT-Achse ist eingeschwenkt Greifer 2 ist auf Spindel   
+define npswn_ct_3         as syg_im[37]=syg_im[37] b_or 'b100000000000'    ;CT-Achse in Grundstellung  Greifer 1 ist unten   
+define npswn_ct_0_1       as syg_im[37]=syg_im[37] b_or 'b1000000000000'   ;CT-Achse im Einschwenken  
+define npswn_ct_1_2       as syg_im[37]=syg_im[37] b_or 'b10000000000000'  ;CT-Achse im Schwenken 
+define npswn_ct_2_3       as syg_im[37]=syg_im[37] b_or 'b100000000000000' ;CT-Achse im Wegschwenken  
+
+;Drehrichtung Werkzeugwechsel
+define np_wzwdrehrich     as $a_dbw[258]
+define npswn_drehrich     as $a_dbw[258]=$a_dbw[258] b_or 'b1'  ;Drehrichtung Werkzeugwechsler schreiben
+define np_drehrich        as (($a_dbw[258] b_and 'b1')>0)       ;Drehrichtung Werkzeugwechsler lesen
+
+define si_swn4            as syg_im[26]                                 ;zusätzliche Softwarenocken
+define npswn4             as $a_dbb[521]                                ;zusätzliche Softwarenocken
+define si_swn4_x_paw_ausw as syg_im[26]=syg_im[26] b_or 'b1'            ;X in Ausweichbereich Palettenwechsel (K2 lt SPEZ.00020239)
+
+define si_techno_type     as syg_im[31];aktiver HELLER-Technologie-Typ
+define nptechnotype       as $a_dbw[280]
+define sb_wzrein_akt      as syg_bm[3] ;WZ-Reinigung aktiv
+
+define sb_marker          as syg_bm[19] ;lokaler Marker
+define sb_marker2         as syg_bm[17] ;lokaler Marker
+
+;Drehen auf Fräsmaschine
+define sb_c1_noclamp      as syg_bm[5] ;C1-Achse nicht klemmen
+define sb_nbasax_z        as syg_bm[6] ;Z-Achse-Maschinendaten nicht auf Basiswerte  
+define sb_save_wks        as syg_bm[8] ;Sicherung des Koordinatensystems vor Umschaltung in Drehbetrieb
+define sb_turn_akt        as syg_bm[10];Maschine im Drehbetrieb
+define n_turn             as ($mn_user_data_hex[12] b_and 'b100000')
+
+;Planzug
+define sb_slide_gst       as syg_bm[7] ;Planzug in Grundstellung
+
+;kinem. Kette
+define sb_autocal_kinchain as syg_bm[82] ;autocal hat kin.Kette geändert
+
+;SBBK
+define sbbk_enabled       as ($mn_user_data_hex[60] b_and 'b1')
+define pn_sbbk_mess_ok    as $a_in[1]
+
+;IPM
+define ipm_enabled        as (($mn_user_data_hex[4] b_and 'b1')>0)
+define n_ipm_enabled      as (($mn_user_data_hex[4] b_and 'b1')>0)
+define ipmkolli_enabled   as (($mn_user_data_hex[11] b_and 'b1000000')>0) ;Kollisionserkennung mit IPM
+
+;Ausweichstrategie
+define aws_enabled        as ($mn_user_data_hex[3] b_and 'b10')
+define pnaws_bemannt      as $a_in[21]
+define pnstrt_aws         as $a_in[26]
+
+;Tiefenmerker rücksetzen
+define i_step_reset       as  $a_in[13]
+
+;Kollisionsüberwachung
+define pnkolli_aus        as  $a_in[27]
+
+;Palettenwechselstellung
+define pnwswzust          as $a_dbb[483]
+define pnwswgst           as (($a_dbb[483] b_and 'b1')>0)
+define pnpalangh          as (($a_dbb[483] b_and 'b10000')>0)
+define pnpalabgse         as (($a_dbb[483] b_and 'b100000')>0)
+define pnpalgsp           as (($a_dbb[483] b_and 'b1000000')>0)
+define pnpaldatvh         as (($a_dbb[483] b_and 'b10000000')>0)
+define gm_palpos          as $a_dbb[484]
+
+;PMS-Schnittstelle
+define gm_palncpara       as $A_DBD[452]
+define gm_beancpara       as $A_DBD[456]
+define gm_palzu           as $A_DBW[470]
+define gm_palzi           as $A_DBW[472]
+define gm_beazu           as $A_DBW[474]
+define gm_beazi           as $A_DBW[476]
+define gm_beabl           as $A_DBW[478]
+define gm_palsoke         as $A_DBW[480]
+define gm_palnr           as $A_DBW[486]
+define gm_beltyp          as $A_DBW[488]
+define gm_beaind          as $A_DBB[492]
+define gm_beastat         as $A_DBB[494]
+
+;Werkstückinformationen Arbeitsraum
+define id_wp_id1            as $a_dbd[460]
+define iw_wp_typ1           as $a_dbw[464]
+define ib_op_index1         as $a_dbb[466]
+define ib_wp_present1       as $a_dbb[496]
+define ib_wp_io1            as $a_dbb[498]
+define ib_wp_meas1          as $a_dbb[500]
+define ib_wp_nio_processed1 as $a_dbb[502]
+define i_op_index_finished1 as (($a_dbb[470] b_and 'b100')>0)
+define i_wp_oversize_cut1   as (($a_dbb[472] b_and 'b10000')>0)
+
+;Werkstückinformationen Rüstplatz
+define id_rp_wp_id1       as $a_dbd[504]
+define iw_rp_wp_typ1      as $a_dbw[508]
+define ib_rp_op_index1    as $a_dbb[510]
+define ib_rp_wp_present1  as $a_dbb[511]
+
+;Override
+define npovr_vs           as $a_dbb[520]=$a_dbb[520] b_or 'b1'            ;Vorschuboverride wirkt auch auf Eilgang-Bewegungen
+define npovr_std          as $a_dbb[520]=$a_dbb[520] b_and b_not 'b1'     ;Standardverhalten
+
+;Bohrkopfzusatzspannung
+define pnbkz_ngst         as $a_in[15]
+
+;Reset
+define npres_aws          as $a_in[24]                                     ;Reset durch Ausweichstrategie
+
+;Kompensation
+define comp_mess_enabled  as (($mn_user_data_hex[13] b_and 'b1')>0)
+define comp_basis_enabled as (($mn_user_data_hex[10] b_and 'b100000')>0)
+
+define comp_a_enabled     as (($mn_user_data_hex[15] b_and 'b100')>0);Kompensation A-Achse Gewichtsabhänging 
+define comp_a_enabled_new as (($mn_user_data_hex[15] b_and 'b100000')>0);Kompensation A-Achse Gewichtsabhängin, altes Modell
+
+define RTSensor_enabled   as (($mn_user_data_hex[15] b_and 'b10')>0) ;Raumtemperatursensor vorhanden
+define pnrt_zust          as $a_dbb[268]                             ;Zustand Raumtemperaturüberwachung
+define pnRT_lim           as (($a_dbb[268] b_and 'b1')<>0)           ;Raumtemperaturstabilität unzureichend
+define m_p2nRT_lim        as (($a_dbb[268] b_and 'b1')<>0)           ;Kompatibilität NSM Solutionline Raumtemperaturstabilität unzureichend
+define pnRT_grad          as (($a_dbb[268] b_and 'b10')<>0)          ;Temperaturänderungsgeschwindigkeit der Raumtemperatur zu groß
+define m_p2nRT_grad       as (($a_dbb[268] b_and 'b10')<>0)          ;Kompatibilität NSM Solutionline Temperaturänderungsgeschwindigkeit der Raumtemperatur zu groß
+
+define comp_z_s_enabled   as (($mn_user_data_hex[15] b_and 'b10000')>0);Kompensation Z(S)
+define comp_tt_enabled    as (($mn_user_data_hex[370] b_and 'b1')>0) ;Spindelklemmungskompensation für TURN_TRAFO
+
+;Gewichtsabhängige Kompenssation A-Achse
+define pncomp_a_clamp     as $a_in[9]                   ;Klemmanforderung A-Achse
+define pncomp_a_tq        as $a_dbw[80]                 ;Drehmoment A-Achse
+define pncomp_a_tq_pav    as $a_dbw[84]                 ;Lastmoment Gewichtsabhängige Kompensation A-Achse in PAV gespeichert
+define m_h2ncomp_a_tq_pav_valid as (($a_dbb[86] b_and 'b1')>0);Lastmoment Gewichtsabhängige Kompensation A-Achse in PAV gespeichert ist gültig
+
+;VCS
+define vcs_enabled        as ($on_techno_extension_mask[2] b_and 'B1000000000000000')
+
+;Vertikalorientierung der Maschine
+define vertori_enabled as (($mn_user_data_hex[10] b_and 'b1000000')>0)
+
+;Technologie
+define si_wqpt as syg_im[93]
+define si_apv_info as syg_im[95]
+define wqpt_fct1 as $mn_user_data_hex[66]
+define sr_gear_step_posctrl_accel as syg_rm[22]
+
+;ChipBreaking
+define cb_enabled as (($mn_user_data_hex[66] b_and 'b10000')>0)
+define sr_cb_x_comp_abs_val as syg_rm[130]
+define sr_cb_y_comp_abs_val as syg_rm[131]
+define sr_cb_z_comp_abs_val as syg_rm[132]
+define sb_cb_active         as syg_bm[70]
+
+;OsziSpindle
+define oszispi_enabled as (($mn_user_data_hex[66] b_and 'b100000')>0)
+
+;Hauptzeitparalleles Rüsten
+define hzpr_enabled as (($mn_user_data_hex[35] b_and 'b10')>0)
+
+;Codechip (Werkzeugcodierung)
+define ct_enabled      as (($mn_user_data_hex[36] b_and 'b10000')>0)  ;Option Codechip (externe Werkzeugcodierung) gesetzt
+define ct_mitn_enabled as (($mn_user_data_hex[37] b_and 'b100000')>0) ;Codechip in Mitnehmhernut
+
+;Externes Beladesystem
+define ebs_enabled as (($mn_user_data_hex[56] b_and 'b1')>0)
+
+;Rundspeicher
+define rsp_enabled as (($mn_user_data_hex[50] b_and 'b1')>0)
+
+;NC-Rüstplatz
+define ncrp_enabled as (($mn_user_data_hex[42] b_and 'b10')>0)
+
+;NC-Planzug
+define pze_enabled as (($mn_user_data_hex[11] b_and 'b1')>0)
+
+;Bohrkopfzusatzspannung
+define bkz_enabled as (($mn_user_data_hex[32] b_and 'b10000')>0)
+
+;Werkzeugvermessung renishaw
+define wzvm_ren_enabled as (($mn_user_data_hex[60] b_and 'b10')>0)
+
+;Werkzeugvermessung Blum
+define wzvm_blum_enabled as ($mn_user_data_hex[60] b_and 'b10000')
+
+;Werkzeugvermessung taktil
+define wzvm_taktil_enabled as ($mn_user_data_hex[60] b_and 'b100000')
+
+;Hydraulische Greiferverriegelung
+define vorverr_enabled as ((($mn_user_data_hex[32] b_and 'b10')>0) or (($mn_user_data_hex[33] b_and 'b100')>0))
+
+;Mehrspindelkopf
+define msk_enabled as (($mn_user_data_hex[32] b_and 'b1000')>0)
+
+;Setup Assist Klemmüberwachung
+define SetupAssistClampCheck_enabled as (($mn_user_data_hex[46] b_and 'b100')>0)
+
+;HSK100
+define n_hsk100 as (($mn_user_data_hex[32] b_and 'b1000000')>0)
+
+;Pickup von Palette
+define tpu_enabled as (($mn_user_data_hex[36] b_and 'b100')>0)
+
+;ATC100XHD-Wechsler
+define wzw_ATC100XHD_enabled as (($mn_user_data_hex[33] b_and 'b1000')>0)
+define wzw_ATC100XHD_SPV_enabled as (($mn_user_data_hex[33] b_and 'b100000')>0)
+
+;Werkzeugwechsler Positionskontrolle
+define wzw_posk_enabled as (($mn_user_data_hex[31] b_and 'b100000')>0)
+define wzw_poskvorverr_enabled as (($mn_user_data_hex[31] b_and 'b10000000')>0)
+define pnwzw_posk_mess  as $a_dbw[88]
+
+;beladungsabhängige Maschinendynamik
+define loaddyn_enabled as (($mn_user_data_hex[15] b_and 'b1')>0)
+
+;Bearbeitungspaket Fräsen 3 Achsen
+define n_3_axis_milling as (($on_techno_function_mask_1 b_and 'b10000000')>0)
+;Bearbeitungspaket Fräsen 5 Achsen
+define n_5_axis_milling as (($on_techno_function_mask_1 b_and 'h20000000')>0)
+
+;HighSpeedSettings
+define cycle832_komp_mode   as (($mn_user_data_hex[51] b_and 'b1')>0)
+define cycle800tt_komp_mode as (($mn_user_data_hex[51] b_and 'b10')>0)
+
+;Rückzug Gewindebohren
+define sr_tapping               as syg_rm[21]
+define si_tno_tapping           as syg_im[94]
+
+;Regalmagazin
+define wmr_enabled  as (($mn_user_data_hex[37] b_and 'b100')>0)
+
+if isfile("/_N_DEF_DIR/_N_MMAC_SERIE_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_SERIE_DEF"
+endif
+
+if isfile("/_N_DEF_DIR/_N_MMAC_WMR_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_WMR_DEF"
+endif
+
+if isfile("/_N_DEF_DIR/_N_MMAC_ATC_WMR_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_ATC_WMR_DEF"
+endif
+
+;Kettenmagazin
+if isfile("/_N_DEF_DIR/_N_MMAC_WMK_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_WMK_DEF"
+endif
+
+;ATC100XHD
+if isfile("/_N_DEF_DIR/_N_MMAC_ATC100XHD_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_ATC100XHD_DEF"
+endif
+
+;Kompatibilität zu "Altmaschinen"
+if isfile("/_N_DEF_DIR/_N_MMAC_KOMP_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_KOMP_DEF"
+endif
+
+;IPM
+if isfile("/_N_DEF_DIR/_N_MMAC_IPM_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_IPM_DEF"
+endif
+
+if (isfile("/_N_DEF_DIR/_N_MMAC_USLIDE_DEF")) ;($mn_user_data_hex[11] b_and 'b1')
+ call "/_n_def_dir/_n_mmac_uslide_def"
+endif
+
+;Drehen auf Fräsmaschine
+if isfile("/_N_DEF_DIR/_N_MMAC_TURN_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_TURN_DEF"
+endif
+
+;ChipBreaking
+if (isfile("/_n_def_dir/_n_mmac_cb_def"))
+ call "/_n_def_dir/_n_mmac_cb_def"
+endif
+
+;Werkzeugvermessung
+if isfile("/_N_DEF_DIR/_N_MMAC_WZVM_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_WZVM_DEF"
+endif
+
+;beladungsabhängige Maschinendynamik
+if (isfile("/_n_def_dir/_n_mmac_loaddyn_def"))
+ call "/_n_def_dir/_n_mmac_loaddyn_def"
+endif
+
+;Achstest
+if (isfile("/_n_def_dir/_n_mmac_ac_def"))
+ call "/_n_def_dir/_n_mmac_ac_def"
+endif
+
+;ESR
+if (isfile("/_n_def_dir/_n_mmac_esr_def"))
+ call "/_n_def_dir/_n_mmac_esr_def"
+endif
+
+;Planko
+if (isfile("/_n_def_dir/_n_mmac_planko_def"))
+ call "/_n_def_dir/_n_mmac_planko_def"
+endif
+
+;Applikation
+if isfile("/_N_DEF_DIR/_N_MMAC_APPL_DEF")
+ call "/_N_DEF_DIR/_N_MMAC_APPL_DEF"
+endif
+
+m30
+

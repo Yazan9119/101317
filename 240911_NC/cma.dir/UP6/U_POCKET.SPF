@@ -1,0 +1,117 @@
+;******************************************
+; Zyklus: U_POCKET
+; - Kanal 2: Magazinplatz des aufgerufenen 
+;            Werkzeugs bestimmen
+;
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Gibt den aktuellen Ort des Werkzeugs im 
+; Magazin oder Werkzeugverwaltung zurück
+; Früher über HMI-Applikation UNISER, jetzt
+; mit Mitteln der Standard-Siemens WzV
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_POCKET
+;           Anpassungen an Siemens WzV 
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_tname: Name des Werkzeugs
+; - lv_duplo: Duplonummer des Werkzeugs
+;  
+; - lv_mag: Ermittelte Magazinnummer (Rückgabe)
+; - lv_loc: Ermittelter Magazinplatz (Rückgabe)
+;******************************************
+;
+; Verwendete GUDs
+;    Uni[57]: Identnummer des Werkzeugs , max. 8-stellige Nummer
+
+
+
+proc u_pocket(string[35] lv_tname, int lv_duplo, var int lv_mag, var int lv_loc) ;displof
+
+def real lv_tident, lv_conf_tname, lv_conf_twear 
+def int lv_tno, lv_magno, lv_locno, lv_maxloc
+
+;-- Umkopieren von GUDs
+lv_conf_twear = UNI[55] ;Konfiguration Standzeitüberwachung
+lv_conf_tname = UNI[56] ;Konfiguration Werkzeugname 0: Name=Platznummer , 1: Name=8-stellige Nummer
+lv_tident = UNI[57]     ;Ident-Nummer des Werkzeugs
+lv_maxloc = UNI[70]     ;Anzahl Plätze im Magazin 1
+
+if $p_sim gotof hl_sim  ;Simulation aktiv
+
+
+;---------------------------------
+;Eingangsparameter prüfen
+if (not(suppar[1])) 
+   ;-- Kein Werkzeugname übergeben
+   ;   -> Wert aus UNI[57] als Name 
+   lv_tname=lv_tident
+endif
+
+if (not(suppar[2])) 
+   ;-- Keine Ersatzwerkzeugnummer übergeben
+   lv_duplo=1
+endif
+
+if lv_tname <> "" and lv_tname <> "0"
+   lv_tno=gett(lv_tname, lv_duplo)
+   if lv_tno<0 
+      ;-- Werkzeug existiert nicht
+   endif
+else
+   lv_tno=0   
+endif
+
+
+if lv_tno>0 
+
+
+
+;-- Magazin- und Platznummer ermitteln
+lv_magno=$A_TOOLMN lv_locno=$A_TOOLMLN
+
+if ((lv_magno<0) or (lv_locno<0) or (lv_locno>lv_maxloc)
+   ;-- Magazin- oder Platz ungültig 
+   hs_fehler(66900)
+   gotof hl_end
+endif
+
+
+
+If (Uni[57]==0) OR NOT ($MN_MM_TOOL_MANAGEMENT_MASK B_AND 1) OR NOT ($A_DBD[72] B_AND 'H800000') OR (Uni[56]<>1) GotoF LabExitCyc
+H473
+If ($A_DBD[16]==0) GotoF Lab01
+If NOT $P_TOOLEXIST[$A_DBD[16]] GotoF Lab01
+If ($TC_TP2[$A_DBD[16]]<>UniS[0]) GotoF Lab01
+Uni[57]=$A_DBD[16]
+If (Uni[55]==1) OR ($TC_TPC4[$A_DBD[16]]==0) GotoF LabExitCyc
+If ((Uni[55]==2) AND ($TC_TPC1[$A_DBD[16]]>0)) OR ((Uni[55]==3) AND ($TC_TPC1[$A_DBD[16]]>$TC_TPC3[$A_DBD[16]])) GotoF LabExitCyc
+
+
+GotoF LabExitCyc
+
+
+hl_sim:
+If (Uni[57]==0) OR NOT ($MN_MM_TOOL_MANAGEMENT_MASK B_AND 1) OR (Uni[56]<>1) GotoF LabExitCyc
+Uni[57]=0
+LabSim02: Uni[57]=Uni[57]+1
+If NOT $P_TOOLEXIST[Uni[57]] AND (Uni[57]<1000) GotoB LabSim02
+If NOT $P_TOOLEXIST[Uni[57]] GotoF LabSim03
+If $TC_TP2[Uni[57]]==UniS[0] GotoF LabExitCyc
+LabSim03:
+If Uni[57]<1000 GotoB LabSim02
+Uni[57]=-1
+LabExitCyc:
+
+hl_end:
+M17

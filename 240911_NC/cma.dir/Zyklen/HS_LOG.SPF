@@ -1,0 +1,30 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 1044 | Last Changed Author: hin | Last Changed Date: 2024-01-04 17:20:36 +0100 (Do, 04 Jan 2024) 
+proc hs_log(string[150] ld_m_text,int ld_modus,string[50] ld_log_file) actblocno sblof displof
+def string[60] lv_logbuch,ld_text
+def int lv_err
+
+lv_logbuch="/_N_MPF_DIR/LOG_"<<toupper(ld_log_file)   ;ansonsten Name zuweisen
+
+if (ld_modus b_and 'b10')>0 ;Zeitstempel in Logdatei ausgeben
+ ld_m_text=substr("0"<<$a_day,strlen("0"<<$a_day)-2,2)<<"."<<substr("0"<<$a_month,strlen("0"<<$a_month)-2,2)<<"."<<$a_year<<" "<<substr("0"<<$a_hour,strlen("0"<<$a_hour)-2,2)<<":"<<substr("0"<<$a_minute,strlen("0"<<$a_minute)-2,2)<<":"<<substr("0"<<$a_second,strlen("0"<<$a_second)-2,2)<<" "<<ld_m_text
+endif
+
+if (ld_modus b_and 'b1000')>0 ;Ringspeicher über mehrere Dateien
+ if (syg_im[7]<=0)or(syg_im[7]>$mn_user_data_int[5])
+  syg_im[7]=1
+ endif
+ lv_logbuch=lv_logbuch<<"_"   ;ansonsten Name zuweisen
+ write(lv_err,lv_logbuch<<syg_im[7],ld_m_text)
+ if lv_err==10;Datei hat max. Groesse erreicht 
+  syg_im[7]=syg_im[7]+1;Zaehler fuer Logdatei erhoehen
+  if syg_im[7]>$mn_user_data_int[5]
+   syg_im[7]=1
+  endif
+  delete(lv_err,lv_logbuch<<syg_im[7])
+  write(lv_err,lv_logbuch<<syg_im[7],ld_m_text)
+ endif
+endif
+ret
+
+

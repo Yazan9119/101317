@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<!-- Configuration of the Solutionline Alarm & Event Service -->
+
+<CONFIGURATION>
+
+	<DataBases>
+		<!-- 
+		Binary files containing the database with attributes and sources of AddOns and OEMs.
+		The list is unlimited and can be expanded by each AddOn/OEM. Use AddOn-/OEM-specific
+		names for the tag and file name to avoid mismatch of databases and its attributes.
+		
+		Attention:
+		The tag names 'Siemens_Database_..' and the file name 'slaedatabase' are reserved
+		for internal use!
+		-->
+		<OEM_DataBase_01 type="QString" value="oem_slaedatabase"/>
+	</DataBases>
+
+</CONFIGURATION>

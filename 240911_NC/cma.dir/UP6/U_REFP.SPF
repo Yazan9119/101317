@@ -1,0 +1,140 @@
+;******************************************
+; Zyklus: U_RFP
+; - Kanal 1: Referenzpunkte Achsen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 10.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Anfahren der Referenzpunkte Hauptachsen und
+; Magazin
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_REFP
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;****************************************** 
+ 
+proc U_REFP ;displof
+
+def int lv_newpos_mag1
+def real lv_axpos_mag1
+
+;-- H496: Programm blockieren
+h496
+stopre
+
+;-- Initialisierung Unisign durchlaufen
+U_INIT
+
+;-- Arbeitsbereich X-Achse auf Maximalwerte
+g25 X-99999
+g26 X99999
+stopre
+
+
+;-- Spindel Halt, KM aus, G-Funktionen setzen
+mcall
+m1=5 m9
+g1 g40 g90 g94 d0
+
+;-- Abfragen Greifer und Schlitten leer
+if (md_p2nuni_acttno_gr1<>0) or (md_p2nuni_acttno_gr2<>0) 
+   hs_fehler(67900) ;FM: Werkzeuggreifer nicht leer (alt: 67015)
+   gotof hl_end
+endif
+if (md_p2nuni_acttno_sld<>0)
+   hs_fehler(67900) ;FM: Werkzeug-Schlitten nicht leer
+   gotof hl_end
+endif
+
+;-- H801: Greifer 1: Prüfen ob Werkzeug aus Kettenmgazin genommen
+;   H811: Greifer 2: Prüfen ob Werkzeug aus Kettenmgazin genommen
+;   H821: Greifer 3: Prüfen ob Werkzeug aus Kettenmgazin genommen
+h801 h811 h821
+
+
+;-- Winkelkopf eingewechselt -> evtl. positionieren
+if (md_p2nuni_tcmode==66) and (md_p2nuni_ah_angle<>90)
+   ;Meldung an Bediener
+   setal(67900) ;FM: Winkelkopf wird positioniert (alt: 67018)
+   m0
+   stopre
+   setal()
+   ;Posionieren auf 90°
+   ROTH(90)
+endif
+
+;-- Z-, X- undY-Achse referenzieren und Grundstellung anfahren
+g74 z=0
+g153 g0 Z0
+g74 x=0 y=0
+g153 g0 y0
+
+;-- Optionale A-Achse referenzieren und Grundstellung anfahren
+if ($ma_ctrlout_type[0,ax4]==1) and ($mn_axconf_machax_name_tab[3]== "A1")
+   g74 A1=0
+   g153 g1 F1000 A1=DC(0)
+EndIf
+
+;-- Spindel synchronisieren und richten
+;   H480: Spindel neu synchronisieren
+h480
+spos[1]=0
+m1=5
+
+;------------------------------------------------------
+;-- Magazin(e) referenzieren und Grundstellung anfahren
+
+;-- Magazinposition bestimmen
+lv_newpos_mag1=md_p2nuni_acttno_spi
+if (lv_newpos_mag1>0) and (lv_newpos_mag1<=Uni[70])
+   ;-- Gültige Magazinposition -> Achsposition berechnen
+   lv_axpos_mag1=((lv_newpos_mag1-1+20)*(360/Uni[70]) + Uni[59]) MOD 360
+else
+   ;-- Keine gültige Magazinposition -> Achse auf 0 Grad positionieren
+   lv_axpos_mag1=0
+endif
+
+if ($ma_ctrlout_type[0,ax6]==1) and ($mn_axconf_machax_name_tab[5]=="Q6")
+   ;-- Maschine mit optionalen 2. Magazin Q6-Achse (bei KM n.v.)
+   g74 q4=0 q6=0
+   g153 g0 q4=dc(lv_axpos_mag1) q6=dc(0)
+else
+   ;-- Maschine nut mit einem Magazin (Q4-Achse)
+   g74 q4=0
+   g153 g0 q4=dc(lv_axpos_mag1)
+endif
+
+;-- 
+if ($ma_ctrlout_type[0,ax9]==1) and ($mn_axconf_machax_name_tab[8]=="Q5")
+   ;-- Achse Q5 existiert (bei KM n.v.)
+   ;H8x2: Werkzeugreifer x - Werkzeug lösen
+   h842 h852 h862
+   ;H8x3: Werkzeuggreifer x - Prüfen, ob Werkzeug gelöst
+   h843 h853 h863
+   ;H8x0: Werkzeuggreifer x - Werkzeug in Kettenmagazin setzen
+   h840 h850 h860
+   ;H8x1: Werkzeuggreifer x - Prüfen, ob Werkzeug in Kettenmagazin gesetzt
+   h841 h851 h861
+   ;-- Achse referenzieren und positonieren
+   g74 q5=0
+   g153 g0 q5=uni[147]
+ 
+   ;H8x0: Werkzeuggreifer x - Werkzeug aus Kettenmagazin entnehmen
+   h800 h810 h820
+   ;H8x1: Werkzeuggreifer x - Prüfen, ob Werkzeug aus Kettenmagazin entnommen
+   h801 h811 h821
+endif
+
+hl_end:
+stopre
+m17

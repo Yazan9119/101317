@@ -1,0 +1,43 @@
+;******************************************
+; Zyklus: HI_HOME
+; - Kanal 1: Hochlauf Magazin
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Hochlauf Initialisierung Magazin allgemein
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_MAG
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+
+proc hi_mag ;sblof displof
+;Initialisierung Werkzeugmagazin
+def int lv_index
+
+;Abstand Wechselstelle-Rüstplatz Mag1
+if ($p_channo==1)
+   nprp_wst=$tc_mdp1[1,2] 
+endif
+
+;Beladestellen leeren
+for lv_index=1 to $tc_map7[9999]
+    $tc_mpp6[9999,lv_index]=0
+endfor
+
+ret
+
+

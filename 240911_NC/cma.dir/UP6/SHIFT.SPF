@@ -1,0 +1,83 @@
+;******************************************
+; Zyklus: SHIFT
+; - Kanal 1: Achsverschiebung programmieren
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Achsverschiebung im Maschinenkoordinaten-
+; system wegen ROTH / ROTHA für Winkelkopf
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus SHIFT
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_axis: Achse
+; - lv_shval: Verschiebung 
+; - lv_shno: Nummer der Verschiebung
+;
+;******************************************
+
+proc shift(axis lv_axis, real lv_shval, int lv_shno) ;displof
+
+def int lv_shid
+def int lv_para_i
+def real lv_para_r
+
+h430
+stopre
+
+if (gd_uni_frame_act<>0) gotof hl_fract
+
+;-- Rücksetzen letzte Nullpunktverschiebungen
+Uni[90]=0 Uni[91]=0 Uni[92]=0 Uni[93]=0 Uni[94]=0 Uni[95]=0
+Uni[96]=0 Uni[97]=0 Uni[98]=0 Uni[99]=0 gd_uni_frame_act=1
+
+hl_fract:
+if (lv_shno<0) or (lv_shno>1)
+   hs_fehler(67900)  ;FM: (alt: 67023)
+   gotof hl_end
+endif
+
+lv_shid=(lv_shno*3)
+hl_AxX:
+if (lv_axis<>X) gotof hl_AxY
+Uni[90+lv_shid]=lv_shval
+gotof hl_spi
+
+hl_AxY:
+if (lv_axis<>Y) gotof hl_AxZ
+Uni[91+lv_shid]=lv_shval
+gotof hl_spi
+
+hl_AxZ:
+if (lv_axis<>Z) gotof hl_spi
+Uni[92+lv_shid]=lv_shval
+
+hl_spi:
+if (lv_axis<>C1) gotof hl_axend
+Uni[99]=lv_shval
+
+hl_axend:
+lv_para_r=md_p2nuni_ah_angle
+lv_para_i=md_p2nuni_tcmode
+
+if $p_search==0 gotof hl_psend
+lv_para_r=gd_uni_ah_actpos
+lv_para_i=gd_uni_tc_mode
+
+hl_psend:
+;-- Koordinatensystem drehen und verschieben
+U_CALCH(2,lv_para_i,lv_para_r,$P_ToolL[1])
+
+hl_end:
+h470 
+
+m17

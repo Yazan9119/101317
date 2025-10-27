@@ -1,0 +1,45 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 319 | Last Changed Author: stj | Last Changed Date: 2023-03-02 11:37:29 +0100 (Do, 02 Mrz 2023) 
+;F_H-Systemzyklen
+
+;NC-Reset ausgelöst
+define pnreset_k1         as (($a_dbb[40] b_and 'b1')<>0)               ;NC-Reset in Kanal1 ausgelöst
+
+;2.Kanal
+
+;Verlängerung
+define ch12ch2_adpt1          as $a_dbr[448]                            ;Werkzeuglänge der Verlängerung in der Spindel
+define ch12ch2_adpt1_erf      as $a_dbr[512]                            ;Werkzeuglänge der Verlängerung in der Spindel für Einrichtfunktionen
+define ch12ch2_adpt1_bst      as $a_dbr[516]                            ;Werkzeuglänge der Verlängerung in der Spindel für Postionierung Lader bei Bereitstellung
+define pnwzw_ztpos            as (($a_dbb[364] b_and 'b1000000')<>0)    ;Positionierung Werkzeugwechsler ZT und Lader in Einzelfunktionen
+
+;Werkzeugvermessung Renishaw Renishaw und Blum
+define npwzvm_swn   as $a_dbb[191]
+define npwzvm_swn_b as $a_dbb[191]=$a_dbb[191] b_or 'b1'          ;Softwarenocken B-Achse ist in erlaubter Stellung für Werkzeugvermessung
+define npwzvm_swn_y as $a_dbb[191]=$a_dbb[191] b_or 'b10'         ;Softwarenocken Y-Achse ist in erlaubter Stellung für Werkzeugvermessung
+
+;kritische Werkzeuglänge bzgl Drehschild
+define npwzl_wres   as $a_dbb[520]=$a_dbb[520] b_and b_not 'b110000'
+define npwzl_w1     as $a_dbb[520]=$a_dbb[520] b_or 'b10000'     ; WZ-Länge > gd_w1
+define npwzl_w2     as $a_dbb[520]=$a_dbb[520] b_or 'b100000'    ; WZ-Länge > gd_w2
+
+;Verfahrbereichseinschränkung Z+
+define npswe1zpl_auto       as (($a_dbb[286] b_and 'b1')<>0)
+define npswe1zpl_poslim     as (($a_dbb[286] b_and 'b10')<>0)
+define npswe1zpl_setauto    as $a_dbb[286]=$a_dbb[286] b_or 'b1'
+define npswe1zpl_setposlim  as $a_dbb[286]=$a_dbb[286] b_or 'b10'
+define npswe1zpl_resauto    as $a_dbb[286]=$a_dbb[286] b_and b_not 'b1'
+define npswe1zpl_resposlim  as $a_dbb[286]=$a_dbb[286] b_and b_not 'b10'
+
+;B-Z-Begrenzung
+define bz_lim as (($mn_user_data_hex[41] b_and 'b1')>0) ;B-Z-Berfahrbereichseinschränkung zu Palettenwechselposition
+define bz_pos as gd_user_data_int_146
+
+;Regalmagazin
+define atc_wmr_enabled as false
+
+;Bereich Schwenkkopf
+define si_swivelhead_area as syg_im[54]
+
+m30
+

@@ -1,0 +1,167 @@
+;******************************************
+; Zyklus: HI_SWCAM
+; - Kanal 1: Hochlauf Softwarenocken
+;******************************************
+; Autor: M. Schaaf
+; Datum: 04.07.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Hochlauf Softwarenocken 
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Heller-Zyklus HI_SWCAM
+;           Version 10.03.00
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc hi_swcam save actblocno ;sblof displof
+;Softwarenocken
+
+def int lv_i
+def real lv_swnplus,lv_swnminus
+
+;-- Maschinenmasssystem anwählen (aus HI_INCH)
+execstring(gd_select_scaling_system)
+
+;!!!GSN if (pze_enabled)
+;!!!GSN  $sn_sw_cam_minus_pos_tab_1[6]=0.1 $sn_sw_cam_plus_pos_tab_1[6]=-0.1
+;!!!GSN  $sn_sw_cam_minus_pos_tab_1[7]=0.5 $sn_sw_cam_plus_pos_tab_1[7]=-0.5
+;!!!GSN endif
+
+;---------------------------------------
+; Softwarenocken umrechnen in inch
+;---------------------------------------
+
+;-- 1. Tabellengruppe (...tab_1)
+for lv_i=0 to 7
+   gd_sw_cam_plus_pos_tab_1[lv_i]=0 gd_sw_cam_minus_pos_tab_1[lv_i]=0
+   if $mn_sw_cam_assign_tab[lv_i]>0
+      if $mn_axconf_machax_name_tab[$mn_sw_cam_assign_tab[lv_i]-1]<>""
+         gd_sw_cam_plus_pos_tab_1[lv_i]=$sn_sw_cam_plus_pos_tab_1[lv_i]   gd_sw_cam_minus_pos_tab_1[lv_i]=$sn_sw_cam_minus_pos_tab_1[lv_i]
+         if not($ma_is_rot_ax[axname($mn_axconf_machax_name_tab[$mn_sw_cam_assign_tab[lv_i]-1])])
+            gd_sw_cam_plus_pos_tab_1[lv_i]=gd_sw_cam_plus_pos_tab_1[lv_i]*gd_fact_metr_inch_mm   gd_sw_cam_minus_pos_tab_1[lv_i]=gd_sw_cam_minus_pos_tab_1[lv_i]*gd_fact_metr_inch_mm 
+         endif
+      endif
+   endif
+endfor
+
+;-- 2. Tabellengruppe (...tab_2)
+for lv_i=0 to 7
+   gd_sw_cam_plus_pos_tab_2[lv_i]=0 gd_sw_cam_minus_pos_tab_2[lv_i]=0
+   if $mn_sw_cam_assign_tab[lv_i+8]>0
+      if $mn_axconf_machax_name_tab[$mn_sw_cam_assign_tab[lv_i+8]-1]<>""
+         gd_sw_cam_plus_pos_tab_2[lv_i]=$sn_sw_cam_plus_pos_tab_2[lv_i]   gd_sw_cam_minus_pos_tab_2[lv_i]=$sn_sw_cam_minus_pos_tab_2[lv_i]
+         if not($ma_is_rot_ax[axname($mn_axconf_machax_name_tab[$mn_sw_cam_assign_tab[lv_i+8]-1])])
+            gd_sw_cam_plus_pos_tab_2[lv_i]=gd_sw_cam_plus_pos_tab_2[lv_i]*gd_fact_metr_inch_mm   gd_sw_cam_minus_pos_tab_2[lv_i]=gd_sw_cam_minus_pos_tab_2[lv_i]*gd_fact_metr_inch_mm 
+         endif
+      endif
+   endif
+endfor
+
+;-- 3. Tabellengruppe (...tab_3)
+for lv_i=0 to 7
+   gd_sw_cam_plus_pos_tab_3[lv_i]=0 gd_sw_cam_minus_pos_tab_3[lv_i]=0
+   if $mn_sw_cam_assign_tab[lv_i+16]>0
+      if $mn_axconf_machax_name_tab[$mn_sw_cam_assign_tab[lv_i+16]-1]<>""
+         gd_sw_cam_plus_pos_tab_3[lv_i]=$sn_sw_cam_plus_pos_tab_3[lv_i]   gd_sw_cam_minus_pos_tab_3[lv_i]=$sn_sw_cam_minus_pos_tab_3[lv_i]
+         if not($ma_is_rot_ax[axname($mn_axconf_machax_name_tab[$mn_sw_cam_assign_tab[lv_i+16]-1])])
+            gd_sw_cam_plus_pos_tab_3[lv_i]=gd_sw_cam_plus_pos_tab_3[lv_i]*gd_fact_metr_inch_mm   gd_sw_cam_minus_pos_tab_3[lv_i]=gd_sw_cam_minus_pos_tab_3[lv_i]*gd_fact_metr_inch_mm 
+         endif
+      endif
+   endif
+endfor
+
+;-- 4. Tabellengruppe (...tab_4)
+for lv_i=0 to 7
+    gd_sw_cam_plus_pos_tab_4[lv_i]=0 gd_sw_cam_minus_pos_tab_4[lv_i]=0
+    if $mn_sw_cam_assign_tab[lv_i+24]>0
+       if $mn_axconf_machax_name_tab[$mn_sw_cam_assign_tab[lv_i+24]-1]<>""
+          gd_sw_cam_plus_pos_tab_4[lv_i]=$sn_sw_cam_plus_pos_tab_4[lv_i]   gd_sw_cam_minus_pos_tab_4[lv_i]=$sn_sw_cam_minus_pos_tab_4[lv_i]
+          if not($ma_is_rot_ax[axname($mn_axconf_machax_name_tab[$mn_sw_cam_assign_tab[lv_i+24]-1])])
+             gd_sw_cam_plus_pos_tab_4[lv_i]=gd_sw_cam_plus_pos_tab_4[lv_i]*gd_fact_metr_inch_mm   gd_sw_cam_minus_pos_tab_4[lv_i]=gd_sw_cam_minus_pos_tab_4[lv_i]*gd_fact_metr_inch_mm 
+          endif
+       endif
+    endif
+endfor
+  
+stopre
+
+
+;---------------------------------------
+;-- Hüller Hille NBH
+if ((gd_mtyp >=1000) and (gd_mtyp<=1999))
+   ;-- Werkzeugwechselpositionen
+   gd_tc_posm[0]=(gd_sw_cam_minus_pos_tab_1[0]+gd_sw_cam_plus_pos_tab_1[0])/2  ;Werkzeugwechselposition X
+   gd_tc_posm[1]=(gd_sw_cam_minus_pos_tab_1[1]+gd_sw_cam_plus_pos_tab_1[1])/2  ;Werkzeugwechselposition Y
+   gd_tc_posm[2]=(gd_sw_cam_minus_pos_tab_1[2]+gd_sw_cam_plus_pos_tab_1[2])/2  ;Werkzeugwechselposition Z
+   gd_tc_posm[3]=(gd_sw_cam_minus_pos_tab_1[3]+gd_sw_cam_plus_pos_tab_1[3])/2  ;Werkzeugwechselposition B
+   gd_tc_posm[5]=(gd_sw_cam_minus_pos_tab_1[5]+gd_sw_cam_plus_pos_tab_1[5])/2  ;Werkzeugwechselposition Spindel
+   if gd_ax_a_vorh or gd_ax_c_vorh
+      gd_tc_posm[6]=(gd_sw_cam_minus_pos_tab_1[6]+gd_sw_cam_plus_pos_tab_1[6])/2  ;Werkzeugwechselposition A- oder C-Achse
+      if (($ma_rot_is_modulo[m_a1]) and gd_ax_a_vorh) or (($ma_rot_is_modulo[m_c1]) and gd_ax_c_vorh)
+         if (gd_sw_cam_plus_pos_tab_2[6]>gd_sw_cam_minus_pos_tab_2[6])
+            lv_swnplus=gd_sw_cam_plus_pos_tab_2[6] lv_swnminus=gd_sw_cam_minus_pos_tab_2[6]
+         else
+            lv_swnplus=gd_sw_cam_minus_pos_tab_2[6] lv_swnminus=gd_sw_cam_plus_pos_tab_2[6]
+         endif
+         if (lv_swnplus-lv_swnminus>180)
+            gd_tc_posm[6]=((lv_swnplus+lv_swnminus+360)/2) mod 360  
+         endif
+         if (gd_sw_cam_minus_pos_tab_2[7]>gd_sw_cam_plus_pos_tab_2[7]) ;invertierter SWN
+            gd_tc_posm[6]=(gd_wpc_pos[3]+180) mod 360
+         endif
+      endif
+   endif
+
+   ;-- Werkstück- / Palettenwechselposition
+   ;!!!GSN: Noch unterscheiden Palettenwechslertyp, welche Achse
+   gd_wpc_pos[0]=(gd_sw_cam_minus_pos_tab_2[0]+gd_sw_cam_plus_pos_tab_2[0])/2   ;Werkstückwechselposition X
+   gd_wpc_pos[2]=(gd_sw_cam_minus_pos_tab_2[0]+gd_sw_cam_plus_pos_tab_2[0])/2   ;Werkstückwechselposition Z
+   if (gd_ax_b_vorh)
+      gd_wpc_pos[4]=(gd_sw_cam_minus_pos_tab_2[2]+gd_sw_cam_plus_pos_tab_2[2])/2 ;Werkstückwechselposition B
+      if ($ma_rot_is_modulo[gd_mbasax_b])
+         if (gd_sw_cam_plus_pos_tab_2[2]>gd_sw_cam_minus_pos_tab_2[2])
+            lv_swnplus=gd_sw_cam_plus_pos_tab_2[2] lv_swnminus=gd_sw_cam_minus_pos_tab_2[2]
+         else
+            lv_swnplus=gd_sw_cam_minus_pos_tab_2[2] lv_swnminus=gd_sw_cam_plus_pos_tab_2[2]
+         endif
+         if (lv_swnplus-lv_swnminus>180)
+            gd_wpc_pos[4]=((lv_swnplus+lv_swnminus+360)/2) mod 360  ;Werkstückwechselposition B 
+         endif
+         if (gd_sw_cam_minus_pos_tab_2[2]>gd_sw_cam_plus_pos_tab_2[2]) ;invertierter SWN
+            gd_wpc_pos[4]=(gd_wpc_pos[4]+180) mod 360
+         endif
+      endif
+   endif  
+endif
+
+;---------------------------------------
+;-- Unisign-Maschinen (z.B. Uniport)
+if ((gd_mtyp >=2000) and (gd_mtyp<=2999))
+   ;-- Werkzeugwechselpositionen
+   gd_tc_posm[0]=(gd_sw_cam_minus_pos_tab_1[0]+gd_sw_cam_plus_pos_tab_1[0])/2  ;Werkzeugwechselposition X
+   gd_tc_posm[1]=(gd_sw_cam_minus_pos_tab_1[1]+gd_sw_cam_plus_pos_tab_1[1])/2  ;Werkzeugwechselposition Y
+   gd_tc_posm[2]=(gd_sw_cam_minus_pos_tab_1[2]+gd_sw_cam_plus_pos_tab_1[2])/2  ;Werkzeugwechselposition Z
+   gd_tc_posm[5]=(gd_sw_cam_minus_pos_tab_1[5]+gd_sw_cam_plus_pos_tab_1[5])/2  ;Werkzeugwechselposition Spindel
+
+   gd_wpc_pos[0]=(gd_sw_cam_minus_pos_tab_2[0]+gd_sw_cam_plus_pos_tab_2[0])/2   ;Werkstückwechselposition Z
+
+endif
+
+;---------------------------------------
+;-- Alle Maschinen
+gd_wpc2_pos[0]=(gd_sw_cam_minus_pos_tab_2[3]+gd_sw_cam_plus_pos_tab_2[3])/2 ;Rückzugs- /Wartungsposition X
+gd_wpc2_pos[1]=(gd_sw_cam_minus_pos_tab_2[4]+gd_sw_cam_plus_pos_tab_2[4])/2 ;Rückzugs- /Wartungsposition Y
+gd_wpc2_pos[2]=(gd_sw_cam_minus_pos_tab_2[5]+gd_sw_cam_plus_pos_tab_2[5])/2 ;Rückzugs- /Wartungsposition Z
+
+ret
+

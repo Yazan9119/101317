@@ -1,0 +1,1111 @@
+;******************************************
+; Zyklus: U_TOOL
+; - Kanal 1: Werkzeugwechsel
+;******************************************
+; Autor: M. Schaaf
+; Datum: 12.08.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Werkzeugwechsel 
+; Abhängig vom programmierten Modus wird das
+; Werkzeug in die Spindel oder den Winkelkopf 
+; ein- bzw. ausgewechselt.
+; Eventuell wird auch der Winkelkopf während des
+; Wechsels aufgenommen oder abgelegt
+; Soll ein Werkzeug in die Spindel eingewechselt 
+; werden, wird eventuell zunächst der Wiko abgelegt
+; und der Schutzring für die Spindel aufgenommen.
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_TOOL
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_new_tc_mode  : Modus des aktuellen Werkzeugwechsels
+;                       0: 
+;                       6: Werkzeug in Spindel einwechseln
+;                      66: Werkzeug in Wiko einwechseln
+; - lv_next_tool    : Werkzeugnummer des folgenden Werkzeugs
+;                     für nächste Bereitstellung
+; - lv_next_tc_mode : Modus des folgenden Werkzeugwechsels
+;
+;******************************************
+
+
+
+proc u_tool(int lv_new_tc_mode, real lv_next_tool, int lv_next_tc_mode) ;displof
+
+
+def int lv_tc_new_spitool     ; Neues Spindelwerkzeug
+def real lv_tc_pos_chain      ; Zielposition Kettenmagazin
+def int lv_tc_magno           ; Zielmagazinnummer
+def int lv_tc_actstate        ; Aktueller Status / Schritt Werkzeugwechsel 
+
+
+h430  
+stopre
+
+;----------------------
+; Start Werkzeugwechsel
+
+; H405: Werkzeugwechsel aktiv 
+; H478: Einzelsatz in Bohrzyklen aktivieren (???)
+h405 h478
+lv_tc_actstate=0
+
+;--------------------------------------------
+; Grundzustand für Werkzeugwechsel herstellen
+
+; H468: Kühlmittel innen aus 
+g0 g40 g71 g90 g94 d0 h468
+m41
+m40
+mcall
+rot
+trans
+$tc_carr1[0]=0
+tcarr=1 tcofr
+adis=uni[49] adispos=uni[49]
+brisk
+
+
+;---------------------------------
+; Werkzeugwechsel-Ablauf bestimmen
+
+
+; Keine folgende Bereitstellung oder 
+; keine Werkzeuge im Magazin 2
+if (lv_next_tc_mode==0) or (uni[142]==0) gotof hl_no_next_TP
+
+; Werkzeugplatz bestimmen
+uni[57]=lv_next_tool
+unis[0]=<<lv_next_tool
+u_pocket
+if (uni[57]<0) 
+   hs_fehler(67019)
+   gotof hl_end
+endif
+
+hl_no_next_tp:
+;-- Warten auf Kanal 2
+m33
+stopre
+
+;-- Umspeichern in globale Variablen
+uni[82]=lv_new_tc_mode uni[84]=uni[57] uni[85]=lv_next_tc_mode
+
+;-- Satzsuchlauf oder Simulation aktiv
+if $p_search or $p_sim gotof hl_cycend
+
+if (lv_new_tc_mode==6) and (pnuni_in_cfcvrspi==0) 
+   ;-- Werkzeugwechsel in Spindel mit Schutzring,
+   ;   aber keine Option Schutzring
+   lv_new_tc_mode=0
+endif
+
+if (pnuni_in_tlselok==0)
+   ;Bereitstellung / Vorbereitung nicht ordnungsgemäß abgeschlossen
+   hs_fehler(67013) 
+   gotof hl_end
+endif
+
+;-- Programmierte Werkzeugnummer von PLC
+lv_tc_new_spitool=md_p2nuni_calltno
+
+
+if (uni[85]<>0) and (uni[142]<>0)
+   ;-- Vorgabe aus PSEL>0 und Werkzeuge im Magazin 2
+   release(q5,q6)
+   uni[67]=0
+   uni[66]=1
+   init(2,"/_n_cst_dir/_n_u_psel_spf")
+   start(2)
+   stopre
+endif
+
+;-- Q4-Achse in NC Kanal 1 holen
+get(q4)
+
+;-- Programmiertes Werkzeug bereits in Spindel
+if (lv_tc_new_spitool==md_p2nuni_acttno_spi) and (lv_new_tc_mode==md_p2nuni_ah_mode) gotof hl_cycend
+
+; H443: Werkzeug in Spindel aufnehmen
+; H444: Prüfen, ob Werkzeug in Spindel aufgenommen
+; H566: Winkelkopf / Schutzring in Spindel aufnehmen 
+h443 h444 h566
+if (md_p2nuni_ah_mode<>0)
+   ;-- Modus Hilfskopf <> 0
+   
+   ; H567: Prüfen, ob Winkelkopf / Schutzring in Spindel aufgenommen
+   h567
+endif
+
+; H551: Prüfen, ob Wiko-Station geschlossen
+; H555: Prüfen, ob Schutzring-Station geschlossen
+; Spindel Halt
+; H845: Prüfen, ob Werkzeug senkrecht in Kettenmagazin 
+h551 h555 m1=5
+h845
+
+;-- Kein Wechsel auf Winkelkopf
+if (lv_new_tc_mode<>66) or (lv_tc_new_spitool==md_p2nuni_acttno_spi) gotof hl_nochkah
+
+if (md_p2nuni_acttno_ah1<>lv_tc_new_spitool) and (md_p2nuni_acttno_ah2<>lv_tc_new_spitool) and (lv_tc_new_spitool<=(uni[70]+uni[142]+uni[143])) 
+   hs_fehler(67024)
+   gotof hl_end
+endif
+
+hl_nochkah:
+;-- Kein Werkzeug in Spindel -> Werkzeug nur holen
+if (md_p2nuni_acttno_spi==0) gotof hl_get_tool
+
+;-- Werkzeugnummer in Spindel kleiner als Anzahl Plätze in allen Magazinen
+if (md_p2nuni_acttno_spi<=(uni[70]+uni[142]+uni[143])) gotof hl_put_tool
+
+;-- Werkzeugnummer = PickUp
+if (md_p2nuni_acttno_spi<=(uni[70]+uni[142]+uni[143]+uni[47])) gotof hl_pickup
+
+;Werkzeugwechsel mit Winkelkopf -> Winkelkopf
+if (md_p2nuni_ah_mode<>6) and (md_p2nuni_ah_mode<>0) gotof hl_mantc_ahead
+
+;-----------------------------------
+;-- Manueller Werkzeugwechsel 
+;   -> Werkzeug von Hand auswechseln
+
+;-- Achsen in manuelle Werkzeugwechselposition
+g153 sposa[1]=uni[44]
+g1 g153 g603 g641 f=uni[50] z=uni[52]
+g153 y=uni[45]
+waits(1)
+g153 z=uni[46]
+
+; H499: Freigabe Werkzeug in Spindel lösen
+; H70000: Kein Werkzeug in Spindel
+h499
+h70000
+
+;-- Einwechseln eines Werkzeugs folgt
+if (md_p2nuni_ah_mode==lv_new_tc_mode) and (lv_tc_new_spitool>(uni[70]+uni[142]+uni[143])) gotof hl_no_zmove
+g153 z=uni[52]
+
+hl_no_zmove: 
+lv_tc_actstate=1
+gotof hl_get_tool
+
+;-------------------------------------------
+;-- Manueller Werkzeugwechsel aus Winkelkopf
+hl_mantc_ahead:
+
+if (md_p2nuni_ah_mode<>66) 
+   ;-- Kein Wechsel für Winkelkopf programmiert
+   hs_fehler(67025)
+   gotof hl_end
+endif
+
+if (md_p2nuni_ah_angle<>0) 
+   ;-- Unzulässiger Winkel für Winkelkopf
+   hs_fehler(67011)
+   gotof hl_end
+endif
+
+;-- Achsen in manuelle Werkzeugwechselposition Winkelkopf
+g153 sposa[1]=uni[34]
+g1 g153 g603 g641 f=uni[50] z=uni[52] h528
+g153 y=uni[35]
+waits(1)
+g153 z=uni[36] h529 h558 h559
+
+; H499: Freigabe Werkzeug in Spindel lösen
+; H70000: Kein Werkzeug in Spindel
+h499
+h70000
+
+;-- Einwechseln eines Werkzeugs folgt
+if (md_p2nuni_ah_mode==lv_new_tc_mode) and (lv_tc_new_spitool>(uni[70]+uni[142]+uni[143])) gotof hl_no_zmove_ahead
+g153 z=uni[52] h568
+
+hl_no_zmove_ahead: 
+lv_tc_actstate=2
+gotof hl_get_tool
+
+;------------------------------------
+; Pickup-Werkzeugwechsel
+hl_pickup:
+
+if (md_p2nuni_ah_mode==66) 
+   ;-- Wechsel für Winkelkopf bei Pickup nicht zulässig
+   hs_fehler(67026)
+   gotof hl_end
+endif
+
+lv_tc_magno=(md_p2nuni_acttno_spi-(Uni[70]-Uni[142]-Uni[143]))
+u_pickup(lv_tc_magno)
+
+gotof hl_get_tool
+
+
+;++++++++++++++++++++++++++++++++++++++
+; Werkzeug aus Spindel in Kette ablegen
+;++++++++++++++++++++++++++++++++++++++
+hl_put_tool:
+
+;-- Wechselmodus für Winkelkopf 
+if (md_p2nuni_ah_mode<>6) and (md_p2nuni_ah_mode<>0) gotof hl_tput_ahead
+
+
+if ($aa_im[y] >= uni[40]) 
+   ;Y-Achse schon im Einfahrbereich
+   ;Z auf sichere Position und Y wieder auf Einfahrposition
+   G1 G153 G603 G641 F=Uni[50] Z=Uni[52]
+   G153 Y=Uni[40]
+endif
+
+
+
+
+;----------------------------------
+;-- Zielplatz für Ablegen bestimmen
+;----------------------------------
+tmpi[1]=0
+
+;-- Woher kommt Werkzeug --
+if (uni[81]<>1) and (md_p2nuni_acttno_spi<=uni[70])
+   ;Spindelwerkzeug kommt direkt aus Magazinplatz
+   tmpi[0]=md_p2nuni_acttno_spi
+else
+   ;Spindelwerkzeug kommt aus Übergabeplatz
+   if (md_p2nuni_acttno_sp1==0)
+      ;Ziel: Übergabeplatz Spindel 1 (Platz 32) 
+	  tmpi[0]=uni[70]-3
+      tmpi[1]=71000
+   else
+      if (md_p2nuni_acttno_sp2==0)
+         ;Ziel: Übergabeplatz Spindel 2 (Platz 33) 
+		 tmpi[0]=uni[70]-2
+         tmpi[1]=72000
+      endif
+   endif
+endif
+
+;-- Spindelwerkzeug soll in Winkelkopf
+if (lv_new_tc_mode==66) and (lv_tc_new_spitool==md_p2nuni_acttno_spi)
+   ;-- Werkzeug auf Übergabeplatz Wiko 1 oder 2 ablegen
+   if (md_p2nuni_acttno_ah1==0)
+      ;Ziel: Übergabeplatz Wiko 1 (Platz 34) 
+	  tmpi[0]=uni[70]-1
+      tmpi[1]=76000
+   else
+      if (md_p2nuni_acttno_ah2==0)
+         ;Ziel: Übergabeplatz Wiko 2 (Platz 35) 
+		 tmpi[0]=uni[70]
+         tmpi[1]=77000
+      endif
+   endif
+endif
+
+if (tmpi[1]==0)
+   hs_fehler(67027,,"Kein Zielplatz frei")
+   gotof hl_end
+endif
+
+;Zielplatz berechnen (Platz 1 = 0°) 
+lv_tc_pos_chain=(tmpi[0]-1)*(360/uni[70])
+
+;Spindel asynchron richten
+g153 sposa[1]=uni[44]
+;Kette asynchron positionieren
+g153 posa[q4]=dc(lv_tc_pos_chain) fa[q4]=uni[60]
+
+;Z- und Y-Achse auf Vorposition für ablegen
+g1 g153 g603 g641 z=uni[52] f=uni[50]
+g153 y=uni[40]
+g153 z=uni[43]
+
+;Warten bis Spindel und Kette in Position sind
+waits(1)
+waitp(q4)
+
+;Kette erneut positionieren
+g0 g153 q4=dc(lv_tc_pos_chain)
+stopre
+g4 f0.5
+
+;H485: Prüfen, ob Platz in Wechselposition frei ist
+h485
+
+;Y-Achse in Position, Werkzeugaufnahme voreilend lösen
+G1 G153 Y=(Uni[42]-Uni[41])
+G153 G60 G601 F=Uni[51] Y=Uni[42] H403
+
+if (tmpi[1]>0)
+   ;-- H-Funktion Werkzeug auf Zielplatz 7xxxx ausgeben
+   h=(tmpi[1]+md_p2nuni_acttno_spi)
+endif
+
+;H700000: Kein Werkzeug in Spindel
+;H404: Prüfen das Werkzeugaufnahme gelöst 
+h70000 h404
+;Z-Achse über Werkzeug fahren
+g153 g603 g641 f=uni[50] z=uni[43]+uni[53] h497
+
+;Werkzeugwechsel-Ablauf Schritt 3
+lv_tc_actstate=3
+
+;Neues Werkzeug soll eingewechselt werden -> Gehe zu Werkzeug holen
+if (lv_tc_new_spitool<>0) and (lv_tc_new_spitool<=(uni[70]+uni[142]+uni[143])) gotof hl_get_tool
+
+;T0 programmiert -> Achsen in Arbeitsbereich fahren
+G1 G153 Y=Uni[40] Z=Uni[52] F=Uni[50] H443 H444
+
+;Werkzeugwechsel beendet
+lv_tc_actstate=0
+
+gotof hl_get_tool
+
+
+;+++++++++++++++++++++++++++++++++++
+; Werkzeug aus WiKo in Kette ablegen
+;+++++++++++++++++++++++++++++++++++
+hl_tput_ahead:
+
+if (md_p2nuni_ah_mode<>66) 
+   ;Falscher Werkzeugwechselmodus
+   hs_fehler(67028,,"Falscher Wechselmodus"<<md_p2nuni_ah_mode)
+   gotof hl_end
+endif
+
+if (md_p2nuni_ah_angle<>0) gotof laberr67011
+   ;Falscher Werkzeugwechselmodus
+   hs_fehler(67011,,"Winkelkopf für Werkzeugwechselwechsel nicht in 0 Grad")
+   gotof hl_end
+endif
+
+;
+if ($aa_im[y] > uni[30])
+   ;Y-Achse schon im Einfahrbereich
+   ;Z auf sichere Position und Y wieder auf Einfahrposition
+   G1 G153 G603 G641 Z=Uni[52] F=Uni[50]
+   G153 Y=Uni[30]
+endif
+
+;Ablegeplatz für Werkzeug bestimmen
+tmpi[1]=0
+if (md_p2nuni_acttno_ah1==0)
+   ;Ziel: Übergabeplatz Wiko 1 (Platz 34)
+   tmpi[0]=uni[70]-1
+   tmpi[1]=76000
+endif
+if md_p2nuni_acttno_ah2==0
+   ;Ziel: Übergabeplatz Wiko 2 (Platz 35)
+   tmpi[0]=uni[70]
+   tmpi[1]=77000
+endif
+
+if (tmpi[1]==0)
+   hs_fehler(67029,,"Kein Ablegeplatz frei")
+   gotof hl_end
+endif
+
+;Zielplatz berechnen
+lv_tc_pos_chain=(tmpi[0]-1)*(360/uni[70])
+
+;Spindel asynchron richten
+g153 sposa[1]=uni[34]
+
+;Kette asynchron positionieren
+g153 posa[q4]=dc(lv_tc_pos_chain) fa[q4]=uni[60]
+
+;Achsen in Vorposition für Wechsel
+g1 g153 g603 g641 z=uni[52] f=uni[50]
+g153 y=uni[30] h528
+
+;Warten bis Spindel und Kette in Position
+waits(1)
+waitp(q4)
+
+;Kette erneut positionieren
+g0 g153 q4=dc(lv_tc_pos_chain)
+stopre
+g4 f0.5
+
+;H485: Prüfen, ob Platz in Wechselposition frei ist
+h485
+
+;Achsen vor dem Übergabeplatz Wiko positionieren
+;H804: Übergabeplätze kippen
+;H805: Prüfen, ob Übergabeplätze gekippt
+g1 g153 z=(uni[33]-125) f=uni[50] h804
+g153 y=(uni[32]-40) h805
+
+;-- Achsen positionieren
+;H529: Prüfen, ob Werkzeugspanner Wiko gelöst
+;H558: Werkzeug in Winkelkopf spannen
+;H559: Prüfen, ob Werkzeug in Winkelkopf gespannt
+;H518: Werkzeug in Winkelkopf lösen
+g153 y=uni[32] z=uni[33]-60 h529 h558 h559
+g153 z=uni[33]-uni[31]
+g153 g60 g601 z=uni[33] f=uni[51] h518
+
+if (tmpi[1]>0)
+   ;-- H-Funktion Werkzeug auf Zielplatz 7xxxx ausgeben
+   h=(tmpi[1]+md_p2nuni_acttno_spi)
+endif
+
+;H700000: Kein Werkzeug in Spindel
+;HH519: Prüfen das Werkzeugaufnahme WiKo gelöst 
+h70000 h519
+
+;Y-Achse vom Werkzeug freifahren
+;H844: Übergabeplätze zurück in Kette kippen
+g153 y=(uni[32]-uni[53]-10) f=uni[50]
+h844
+
+;Werkzeugwechsel-Ablauf Schritt 4
+lv_tc_actstate=4
+
+;Neues Werkzeug soll eingewechselt werden -> Gehe zu Werkzeug holen
+if (lv_tc_new_spitool<>0) and (lv_tc_new_spitool<=(uni[70]+uni[142]+uni[143])) gotof hl_get_tool
+
+;H558: Werkzeugaufnahme Winkelkopf spannen
+;H559: Prüfen, ob Werkzeugaufnahme Winkelkopf spannen
+h558 h559
+
+;H568: Spanner Winkelkopf einziehen
+;H443: Werkzeugaufnahme Spindel spannen
+h568 h443
+
+;Y-Achse freifahren
+g1 g153 y=uni[30] z=uni[52] f=uni[50] h569
+
+;Werkzeugwechsel beendet
+lv_tc_actstate=0
+
+
+;+++++++++++++++++++++++++++++++++++
+; Werkzeug aus Kette holen
+;+++++++++++++++++++++++++++++++++++
+hl_get_tool:
+
+
+;-- Neuer Wechseltyp ist gleich aktueller Wechseltyp
+if (lv_new_tc_mode==md_p2nuni_ah_mode) gotof labc999
+
+;-- Kein Werkzeug ausgewechselt oder manueller Wechsel
+if (lv_tc_actstate<3) gotof labc010
+
+;-----------------------------------
+;Wechseltypen sind ungleich, erst 
+;passenden Wechseltyp herstellen
+;Spindel oder Wiko
+
+if (md_p2nuni_ah_mode==66)
+   ;Aktueller Wechseltyp WiKo
+   ;H558: Werkzeugaufnahme WiKo spannen
+   ;559: Prüfen, ob Werkzeugaufnahme WiKo gespannt
+   ;568: Auto-Spanner WiKo einziehen
+   ;443: Werkzeugaufnahme Spindel spannen
+   h558 h559
+   h568 h443
+   ;Sichere Positionen Y und Z anfahren
+   g1 g153 y=uni[30] z=uni[52] f=uni[50]
+else
+   ;Aktueller Wechseltyp Spindel
+   ;568: Auto-Spanner WiKo einziehen
+   ;443: Werkzeugaufnahme Spindel spannen
+   h568 h443
+   ;Einfahrtposition Y und sichere Position Z anfahren
+   g1 g153 y=uni[40] z=uni[52] f=uni[50]
+endif   
+
+LabC010:
+
+if (md_p2nuni_ah_mode==66) and (md_p2nuni_ah_angle<>0) gotof laberr67011
+   ;WiKo eingewechselt und Winkel nicht 0 Grad
+   hs_fehler(67011,,"Unzulässiger Winkel für Werkzeugwechsel. Winkel="<<md_p2nuni_ah_angle)
+endif
+
+;Z-Achse auf sichere Position
+g1 g153 g603 g641 z=uni[52] f=uni[50]
+
+if ($aa_im[y]<(uni[27]+uni[23]))
+   ;Y-Achse im Bereich WiKo-Station -> Freifahren
+   g153 y=(uni[27]+uni[23])
+endif
+
+;Aktueller Wechseltyp ungleich Spindel 
+if (md_p2nuni_ah_mode<>6) gotof labc030
+
+;H514: Schutzring-Station öffnen
+h514
+;Y-Achse auf Position und Z-Achse über Schutzring-Ablage
+g153 g603 g641 y=uni[24] z=uni[26] h515 h517 h569
+
+if (lv_new_tc_mode==66)
+   ;WiKo soll eingewechselt werden
+   ;H510: Winkelkopf-Station öffnen
+   h510
+endif
+
+;Schutzring mit Z-Achse ablegen
+g153 g64 g602 z=uni[25]+20
+g153 g60 g601 z=(uni[25]-0) f5000
+
+;H4000: Kein Hilfskopf an Spindel
+;H526: WiKo / Schutzring von Hauptspindel ablegen
+h4000
+h526
+
+;Z-Achse langsam freifahren 
+g153 g60 g601 z=uni[25] f2000 h527
+g153 g60 g601 z=uni[25]+5 f300
+
+if (uni[26]-uni[25])>=125
+   ;Z-Achse freifahren
+   g153 g603 g641 z=uni[25]+75 f=uni[50]
+   ;H557: Prüfen, ob Schutzring in Station abgelegt
+   h557
+endif
+
+;Z-Achse komplett freifahren
+;H557: Prüfen, ob Schutzring in Station abgelegt
+g153 g603 g641 z=uni[26] f=uni[50]
+h557
+lv_tc_actstate=101
+
+if (lv_new_tc_mode<>0)
+   ;Neuer Wechseltyp<>0
+   ;Y-Achse auf Position Wiko
+   ;H554: Schutzring-Station schließen
+   g153 y=uni[27] h554
+else
+   ;Neuer Wechseltyp=0
+   ;Y-Achse freifahren
+   ;H554: Schutzring-Station schließen
+   ;H566: WiKo / Schutzring spannen
+   g153 y=(uni[27]+uni[23]) z=uni[52] h554 h566
+endif
+
+gotof labc999
+
+
+labc030:
+
+;Aktueller Wechseltyp <> 66 (WiKo)
+if (md_p2nuni_ah_mode<>66) gotof labc999
+
+;H510: Winkelkopfstation öffnen
+h510
+;Spindel asynchron auf Kopfwechselposition richten
+;Y-Achse auf sichere Position
+;H511: Prüfen, ob Winkelkopfstation offen ist
+;H543: Werkzeugaufnahme Spindel spannen
+;H569: Prüfen, ob Auto-Spanner WiKo eingezogen
+g153 sposa[1]=uni[29]
+g153 g603 g641 y=(uni[27]+uni[23]) h511 h543 h569
+
+;Warten bis Spindel gerichtet ist
+waits(1)
+
+;H525: Freigabe WiKo positionieren
+h525
+;Y-Achse auf Position Wiko, Z-Achse über Wiko positionieren
+;H526: Winkelkopf ablegen
+;H527: Prüfen, ob Winkelkopf abgelegt
+g153 y=uni[27] z=(uni[28]+100) h526
+g153 g64 g602 z=(uni[28]+40) h527
+g153 g60 g601 z=uni[28] f1000 m1=5
+
+;H4000: Kein Hilfskopf an Spindel
+;H403: 
+;H404:
+;H565:
+h4000
+h403
+h404 h565
+g4 f1.5 
+
+;-- Z-Achse vom Winkelkopf freifahren
+;H402: Spindel ausblasen ein
+;H503: Prüfen, ob WiKo in Station abgelegt
+g153 g603 g641 z=(uni[28]+25) h402
+g153 z=(uni[28]+100) f=uni[50]
+h503
+lv_tc_actstate=102
+
+if (lv_new_tc_mode<>0)
+   ;Neuer Wechseltyp<>0
+   ;H557: 
+   ;h503: Prüfen, ob WiKo in Station abgelegt
+   ;H442: Ausblasen Spindel ausschalten
+   ;h550: WiKo-Station schließen
+   ;H514: Schutzring-Station öffnen
+   g153 z=uni[26] f=uni[50] h557
+   h503
+   g153 y=uni[24] h442 h550 h514
+else
+   ;Neuer Wechseltyp=0
+   ;Z-und Y-Achse auf sichere Position
+   ;H442: Ausblasen Spindel ausschalten
+   ;h503: Prüfen, ob WiKo in Station abgelegt
+   ;h550: WiKo-Station schließen
+   ;H566: WiKo / Schutzring spannen
+   ;H443: Werkzeugaufnahme Spindel spannen
+   g153 z=uni[52] f=uni[50]
+   h442
+   h503
+   g153 y=(uni[27]+uni[23]) h550 h566 h443
+endif
+
+
+
+labc999:
+;Neuer Wechseltyp gleich aktueller Wechseltyp
+if (lv_new_tc_mode==md_p2nuni_ah_mode) gotof labd050
+
+;Aktueller Schritt > 100 (WiKo oder Schutzring abgelegt)
+if (lv_tc_actstate>100) gotof labd030
+
+;Aktueller Schritt < 3 (Zuvor kein Werkzeug abgelegt oder manueller Wechsel)
+if (lv_tc_actstate<3) gotof labd020
+
+If (md_p2nuni_ah_mode==66)
+   ;Aktueller Wechseltyp WiKo
+   ;H558: Werkzeugaufnahme WiKo spannen
+   ;559: Prüfen, ob Werkzeugaufnahme WiKo gespannt
+   ;568: Auto-Spanner WiKo einziehen
+   ;443: Werkzeugaufnahme Spindel spannen
+   h558 h559
+   h568 h443
+   ;Sichere Positionen Y und Z anfahren
+   ;H569: Prüfen, ob Auto-Spanner WiKo eingezogen
+   g1 g153 g603 g641 y=uni[30] z=uni[52] f=uni[50] h569
+else
+   ;Aktueller Wechseltyp Spindel
+   ;568: Auto-Spanner WiKo einziehen
+   ;443: Werkzeugaufnahme Spindel spannen
+   h568 h443
+   ;Einfahrtposition Y und sichere Position Z anfahren
+   ;H569: Prüfen, ob Auto-Spanner WiKo eingezogen
+   g1 g153 g603 g641 y=uni[40] z=uni[52] f=uni[50] h569
+endif
+
+
+labd020:
+;Z-Achse auf sichere Position Werkzeugwechsel
+;H566: WiKo/ Schutzring aufnehmen
+;H527: Prüfen, ob WiKo / Schutzring abgelegt
+g1 g153 g603 g641 z=uni[52] f=uni[50]
+h566
+g4 f2
+h527
+
+labd030:
+
+;H503: Prüfen, ob Winkelkopf in Station
+h503
+if (pnuni_in_cfcvrspi<>0)
+   ;Option Schutzring
+   ;Prüfen, ob Schutzring in Station
+   h557
+endif
+
+;Neuer Wechseltyp ungleich Spindel
+if (lv_new_tc_mode<>6) gotof labd040
+
+;---------------------------------------
+;Schutzring in Spindel holen
+h526
+g1 g153 g603 g641 y=uni[24] f=uni[50] h514 h515 h527
+g153 z=uni[25]+20 h557
+g153 g60 g601 z=uni[25] f5000
+h557
+h4006
+h566 h567
+g153 g603 g641 z=(uni[25]+20) f5000
+h517
+g153 z=uni[52] f=uni[50]
+g153 y=(uni[27]+uni[23]) h554
+lv_tc_actstate=201
+
+
+LabD040:
+
+;Neuer Wechseltyp ungleich WiKo
+if (lv_new_tc_mode<>66) gotof labd050
+
+;---------------------------------------
+;WiKo in Spindel holen
+h526 h554 h510
+g153 sposa[1]=uni[29]
+g1 g153 g603 g641 y=uni[27] f=uni[50] h511 h555 h527
+waits(1)
+g1 g153 f=uni[50] z=(uni[28]+175) h403 h404 h503
+g153 g64 g602 z=(uni[28]+25) h402
+g153 g60 g601 z=uni[28] f1000 h442 h525
+h4066 h443
+h444
+g4 f1.5 
+g153 g603 g641 z=(uni[28]+25) h566
+g153 f=uni[50] z=(uni[28]+100) h567
+h543 h565
+g153 y=(uni[27]+uni[23]) z=uni[52] h40000
+h550
+lv_tc_actstate=202
+
+
+LabD050:
+if not((lv_tc_actstate<100) or (lv_tc_actstate>200))
+   g1 g153 g603 g641 z=uni[52] f=uni[50]
+   g153 y=(uni[27]+uni[23])
+   h554 h550
+endif
+
+LabD999:
+;Aktuelles Spindelwerkzeug ist neues Werkzeug 
+if (md_p2nuni_acttno_spi==lv_tc_new_spitool) gotof hl_cycend
+
+;Werkzeug ist im Magazin
+if (lv_tc_new_spitool<=(uni[70]+uni[142]+uni[143])) gotof hl_get_mag
+
+;Werkzeug ist im Magazin oder Pickup-Station
+if (lv_tc_new_spitool<=(uni[70]+uni[142]+uni[143]+uni[47])) gotof hl_get_pickup
+
+;--------------------------------------
+;Manueller Werkzeugwechsel
+
+;H551: Prüfen, ob WiKo-Station geschlossen
+;H555: Prüfen, ob Schutzring-Station geschlossen
+h551 h555
+
+;Manueller Wechsel in Winkelkopf?
+if (lv_new_tc_mode<>6) and (lv_new_tc_mode<>0) gotof hl_get_man_ahead
+
+
+;--------------------------------------
+;Handwerkzeug in Spindel einsetzen
+if (lv_tc_actstate<>1)
+   ;Achsen noch nicht auf manueller Wechselposition
+   g153 sposa[1]=uni[44]
+   g1 g153 g603 g641 f=uni[50] z=uni[52]
+   g153 y=uni[45]
+   waits(1)
+endif
+
+;Z-Achse in manuelle Wechselposition
+g153 z=uni[46] f=uni[50]
+
+;H499: Manueller Werkzeugwechsel Freigabe Werkzeugaufnahme lösen 
+h499
+;Z-Achse auf sichere Position, Werkzeug <nr> in Spindel
+g153 z=uni[52] h=(lv_tc_new_spitool+70000)
+
+lv_tc_actstate=301
+gotof hl_cycend
+
+
+;--------------------------------------
+;Handwerkzeug in WiKo einsetzen
+hl_get_man_ahead:
+if (lv_new_tc_mode<>66) 
+   hs_fehler(67030)
+   gotof hl_end
+endif
+
+if (lv_tc_actstate<>2)
+   ;Achsen noch nicht auf manueller Wechselposition
+   g153 sposa[1]=uni[34]
+   g1 g153 g603 g641 f=uni[50] z=uni[52] h528
+   g153 y=uni[35]
+   waits(1)
+endif 
+
+;Z-Achse in manuelle Wechselposition
+g153 z=uni[36] f=uni[50] h529 h558 h559
+
+;H499: Manueller Werkzeugwechsel Freigabe Werkzeugaufnahme lösen
+;H568: Auto-Spanner WiKo einziehen 
+h499
+h568
+
+;Z-Achse auf sichere Position, Werkzeug <nr> in Spindel
+g153 z=uni[52] h=(lv_tc_new_spitool+70000)
+
+lv_tc_actstate=302
+gotof hl_cycend
+
+
+;--------------------------------------
+;Pickup-Werkzeugwechsel
+hl_get_pickup:
+if (md_p2nuni_ah_mode==66)
+   ;Kein Pickupwechsel in Winkelkopf
+   hs_fehler(67031)
+   gotof hl_end
+endif 
+
+lv_tc_magno=(lv_tc_new_spitool-(Uni[70]-Uni[142]-Uni[143]))
+u_pickup(lv_tc_magno)
+gotof hl_cycend
+
+
+;--------------------------------------
+;Werkzeug aus Magazin einwechseln
+hl_get_mag:
+
+;Platz bestimmen von dem eingewechselt wird
+tmpi[1]=0
+if (md_p2nuni_acttno_sp1==lv_tc_new_spitool)
+   ;Werkzeug liegt auf Spindel-Übergabeplatz 1
+   tmpi[0]=uni[70]-3
+   tmpi[1]=71000
+   tmpi[2]=md_p2nuni_acttno_sp1
+endif
+if (md_p2nuni_acttno_sp2==lv_tc_new_spitool)
+   ;Werkzeug liegt auf Spindel-Übergabeplatz 2
+   tmpi[0]=uni[70]-2
+   tmpi[1]=72000
+   tmpi[2]=md_p2nuni_acttno_sp2
+endif
+if (md_p2nuni_acttno_ah1==lv_tc_new_spitool)
+   ;Werkzeug liegt auf WiKo-Übergabeplatz 1
+   tmpi[0]=uni[70]-1
+   tmpi[1]=76000
+   tmpi[2]=md_p2nuni_acttno_ah1
+endif
+if (md_p2nuni_acttno_ah2==lv_tc_new_spitool)
+   ;Werkzeug liegt auf WiKo-Übergabeplatz 2
+   tmpi[0]=uni[70]
+   tmpi[1]=77000
+   tmpi[2]=md_p2nuni_acttno_ah2
+endif
+if (tmpi[1]==0) and (lv_tc_new_spitool<=uni[70]-4)
+   ;Werkzeug wird direkt vom Magazinplatz geholt
+   tmpi[0]=lv_tc_new_spitool
+   tmpi[1]=1
+   tmpi[2]=lv_tc_new_spitool
+endif
+
+if (tmpi[1]==0)
+   ;Werkzeug auf keinem Platz gefunden
+   hs_fehler(67032)
+   gotof hl_end
+endif
+
+;Zielposition Kettenmagazin bestimmen
+lv_tc_pos_chain=(tmpI[0]-1)*(360/Uni[70])
+
+
+;Werkzeug in Winkelkopf einwechseln?
+if (md_p2nuni_ah_mode<>6) and (md_p2nuni_ah_mode<>0) gotof hl_get_mag_ahead
+
+if not((lv_tc_actstate==3) or (lv_tc_actstate==4))
+   ;Achsen noch nicht in Werkzeugwechselposition
+   if ($aa_im[y]>=uni[40])
+      ;Y-Achse im Bereich Spindel-Werkzeugwechsel -> Freifahren
+	  g1 g153 g603 g641 f=uni[50] z=uni[52]
+      g153 y=uni[40]
+   endif
+   
+   ;Achsen in Spindel-Wechselposition
+   g153 sposa[1]=uni[44]
+   g153 posa[q4]=dc(lv_tc_pos_chain) fa[q4]=uni[60]
+   g1 g153 g603 g641 z=uni[52] f=uni[50]
+   waits(1)
+   g153 y=uni[40] h497 h403
+   g1 g153 g64 y=uni[42] z=uni[43]+uni[53] f=uni[50]
+   waitp(q4)
+   g0 g153 q4=dc(lv_tc_pos_chain)
+else
+   ;Achsen schon auf Werkzeugwechselposition
+   g1 g153 q4=dc(lv_tc_pos_chain) f=uni[60] h403
+endif
+
+stopre
+g4 f0.5
+
+;H486: Prüfen, ob Werkzeug in Wechselposition vorhanden
+;H404: Prüfen, ob Spindel leer ist
+h486 h404
+
+;Z-Achse in Werkzeugwechselposition
+g1 g153 g60 g601 z=uni[43] f=uni[50] h402
+g4 f0.3
+
+;H7000xx Werkzeug <nr> in Spindel
+;H443: Werkzeugaufnahme Spindel klemmen
+h=(70000+ tmpi[2]) h443
+
+;Y-Achse auf Vorposition
+;H442: Ausschalten Ausblasen Spindel
+;H444: Prüfen, ob Werkzeug in Spindel
+g153 g603 g641 y=uni[42]-uni[41] f= uni[51] h442 h444
+
+if (tmpi[1]>1)
+   ;Werkzeug kommt von Übergabeplatz
+   uni[81]=1
+   
+   ;Y-Achse auf Einfahrposition
+   ;H7xxx0: Werkzeug auf Übergabeplatz löschen
+   g153 y=uni[40] f=uni[50] h=tmpi[1]
+else
+   ;Werkzeug kommt direkt aus Kette
+   uni[81]=0
+   ;Y-Achse auf Einfahrposition
+   g153 y=uni[40] f=uni[50]
+endif
+
+;Z-Achse freifahren
+g153 z=uni[52]
+
+lv_tc_actstate=303
+gotof hl_cycend
+
+;------------------------------------------------
+;Werkzeug aus Magazin in Winkelkopf
+hl_get_mag_ahead:
+
+;Kein Wechseltyp "WiKo"
+if (md_p2nuni_ah_mode<>66) gotof hl_cycend
+
+if (md_p2nuni_ah_angle<>0)
+   ;Winkel für Winekkopf unzuläsig (<>0 Grad)
+   hs_fehler(67011)
+   gotof hl_end
+endif
+
+if (tmpi[2]<>md_p2nuni_acttno_ah1) and (tmpi[2]<>md_p2nuni_acttno_ah2) 
+   ;Werkzeug liegt nicht auf WiKo-Übergabeplatz (kippbar)
+   hs_fehler(67033)
+   gotof hl_end
+endif
+
+if not((lv_tc_actstate==3) or (lv_tc_actstate==4))
+   ;Achsen noch nicht in Werkzeugwechselposition
+   if ($aa_im[y]>=uni[30])
+      ;Y-Achse im Bereich WiKo-Werkzeugwechsel -> Freifahren
+	  g1 g153 g603 g641 z=uni[52] f=uni[50]
+      g153 y=uni[30]
+   endif
+   
+   ;Achsen in WiKo-Wechselposition
+   g153 sposa[1]=uni[34]
+   g153 posa[q4]=dc(lv_tc_pos_chain) fa[q4]=uni[60]
+   g1 g153 g603 g641 z=uni[52] f=uni[50]
+   g153 y=uni[30] h528 h529 h559
+   waitp(q4)
+   g0 g153 q4=dc(lv_tc_pos_chain)
+   stopre
+   g4 f0.5
+   h486
+   waits(1)
+   g1 g153 y=(uni[32]-uni[53]) z=uni[33] h804 h518 h519
+else
+   ;Achsen schon auf Werkzeugwechselposition
+   g0 g153 q4=dc(lv_tc_pos_chain)
+   stopre
+   g4 f0.5
+   h486
+   h804 h518 h519
+endif
+
+;H805: Prüfen, ob WiKo-Übergabeplätze gekippt
+h805
+
+;Y-Achse in Werkzeugwechselposition
+g1 g153 g60 g601 y=uni[32] f=uni[50] h402
+g4 f0.3
+
+;H7000xx Werkzeug <nr> in Spindel
+h=(70000+ tmpi[2])
+if (tmpi[1]>1)
+   ;Werkzeug auf Übergabeplatz löschen
+   h=tmpi[1]
+endif
+
+;Achsen mit Werkzeug in WiKo freifahren
+g153 g603 g641 z=uni[33]-uni[31] f=uni[51] h442 h558 h559
+g153 z=(uni[33]-60) f=uni[50] h568
+g153 y=uni[32]-40 z=(uni[33]-125)
+g153 y=uni[30] h844
+g153 z=uni[52] h845 h569
+
+
+;-------------------------------
+;Ende Werkzeugwechselzyklus
+hl_cycend:
+
+;Q4-Achse freigeben
+release(q4)
+
+;Spindel Halt -> aus Lageregelung / richten
+;H551: Prüfen, ob WiKo-Station geschlossen
+;H555: Prüfen, ob Schutzring-Station geschlossen
+;H444: Prüfen, ob Werkzeug in Spindel gespannt
+;H566: Winkelkopf / Schutzring spannen
+m1=5 h551 h555
+h443 h444 h566
+
+;Grundstellung G-Gruppen nach Werkzeugwechsel
+soft
+g60 g603
+
+;T0 programmiert?
+if (md_p2nuni_ah_mode<>0)
+   ;Prüfen, ob Winkelkopf oder Schutzring an Spindel
+   h567
+endif
+
+;Neues Werkzeug an NC und Schneide aktivieren
+m61
+d1
+
+
+if not((uni[85]==0) or (uni[142]==0))
+   ;Nächstes bereitzustellendes Werkzeug (nur bei 2. Magazin)
+   $ac_marker[4]=1
+   t=uni[84]
+endif
+
+;Satzsuchlauf, Simulation aktiv oder Wechseltyp oder neues Spindelwerkzeug programmiert
+if ($p_search==1) or ($p_sim==1) or (uni[85]<>0) or (lv_tc_new_spitool<>0) gotof hl_no_tp
+
+;Im Kanal 2 Werkzeug von Übergabeplatz in Magazin bringen
+m33
+stopre
+uni[67]=0
+uni[66]=1
+uni[84]=0
+uni[85]=6
+init(2,"/_n_cst_dir/_n_u_psel_spf")
+start(2)
+stopre
+
+
+hl_no_tp:
+$ac_marker[3]=lv_new_tc_mode tmpr[0]=md_p2nuni_ah_angle tmpi[0]=md_p2nuni_ah_mode
+
+if not(($p_search==0) and ($p_sim==0)) 
+   tmpr[0]=$ac_param[2]
+   tmpi[0]=$ac_marker[3]
+endif
+
+u_calch(3,tmpi[0],tmpr[0],$p_tooll[1])
+rot
+trans
+atrans x=(uni[90]+uni[93]) y=(uni[91]+uni[94]) z=(uni[92]+uni[95])
+arot rpl=uni[99]
+
+hl_end:
+h445 g60 g603
+uni[1]=0 uni[2]=0
+stopre
+h470 
+
+M17
+
+

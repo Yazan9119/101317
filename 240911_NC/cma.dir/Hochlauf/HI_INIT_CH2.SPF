@@ -1,0 +1,78 @@
+;VERSION: 10.02.00
+;Last Changed Rev: 1152 | Last Changed Author: hin | Last Changed Date: 2024-01-30 14:43:35 +0100 (Di, 30 Jan 2024) 
+proc hi_init_ch2 actblocno sblof displof
+
+stopre
+cv_init_state=5
+
+;Faktor Masssystem ermitteln
+if $MN_SCALING_SYSTEM_IS_METRIC 
+   $mc_gcode_reset_values[12]=4
+else
+   $mc_gcode_reset_values[12]=3
+endif
+execstring(gd_select_scaling_system)
+
+stopre
+cv_init_state=20
+;Warten auf Hochlauffreigabe
+hl_wait2:
+if not(pnfrghlk2) gotob hl_wait2
+
+stopre
+cv_init_state=31
+
+
+
+
+
+;gotof hl1111 ;hi_home ertüchtigen
+;
+;
+;
+;
+;
+;hi_home
+;
+;
+;
+;
+;hl1111:
+;
+
+setm(30)
+g4f0
+
+stopre
+cv_init_state=48 
+when (pngb_angw) do setm(31) ;Geber sind angewählt
+waitm(31,$p_channo)
+stopre
+clearm(31)
+
+stopre
+cv_init_state=40
+;if wmr_enabled
+; hi_shank
+; hi_wmr
+;endif
+
+stopre
+cv_init_state=50
+;hi_wmr_sync
+
+stopre
+cv_init_state=90 
+;hs_recover_ch2
+
+stopre
+cv_init_state=95 
+nphlk2_end ;Hochlauf Kanal2 fertig
+
+stopre
+cv_init_state=99
+
+ret
+
+
+

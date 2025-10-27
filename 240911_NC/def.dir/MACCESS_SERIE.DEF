@@ -1,0 +1,11 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 463 | Last Changed Author: hin | Last Changed Date: 2023-05-12 11:05:03 +0200 (Fr, 12 Mai 2023) 
+
+;VERSION F_H-00-00-00
+
+;variablen fuer werkzeugwechsel
+redef gv_c        inipo 9999.999
+redef gd_uebhub_x inipo 9999.999
+
+m17
+

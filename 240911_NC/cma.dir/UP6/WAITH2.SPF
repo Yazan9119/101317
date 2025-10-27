@@ -1,0 +1,97 @@
+;******************************************
+; Zyklus: WAITH1
+; - Kanal 1: Warten bis Winkelkopf positioniert
+;******************************************
+; Autor: M. Schaaf
+; Datum: 03.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Eine mit ROTHA gestartete asynchrone 
+; Positionierung abwarten
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus WAITH2
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+;
+;******************************************
+
+proc waith2 ;displof
+
+h430
+stopre
+
+if ((md_p2nuni_tcmode<>66) and ($p_search==0) and ($p_sim==0))
+   hs_fehler(67900) ;FM: alt=67042
+   gotof hl_end
+endif
+
+if (gd_uni_ah_rotact==0) 
+   hs_fehler(67900) ;FM: alt=67043
+   gotof hl_end
+endif
+
+if (gd_uni_ah_rotact<>1) gotof hl_nowait
+;-- Zyklus WAITH1 ausführen, wenn noch nicht geschehen
+WAITH1
+
+hl_nowait:
+if (gd_uni_ah_rotact<>2) 
+   hs_fehler(67900) ;FM: alt=67044
+   gotof hl_end
+endif
+gd_uni_ah_rotact=0
+
+;-- Aktueller=Vorgabe-Winkel oder Satzuchlauf oder Simulation -> Zyklusende
+if (gd_uni_ah_spipos==gd_uni_ah_newangle) or ($p_search==1) or ($p_sim==1) gotof hl_fin
+
+if (gd_uni_ah_rotstat<>2)
+   hs_fehler(67900) ;FM: alt=67045
+   gotof hl_end
+endif
+
+cancel(3)
+waits(1)
+
+if (pnuni_in_fct_deldstgo==1)
+   h476
+   if gd_uni_ah_cmddir==1
+      g153 spos[1]=acn(gd_uni_ah_spipos)
+   else
+      g153 spos[1]=acp(gd_uni_ah_spipos)
+   endIf
+   h540 h566 h542
+   gd_uni_ah_rotstat
+   fa[S1]=0 acc[S1]=100
+   h=(ROUND(gd_uni_ah_spipos*10)+40000)
+   h567
+   m1=5
+   h540 h541
+   h565
+   hs_fehler(67900) ;FM: alt=67049
+endif
+h476
+g153 spos[1]=dc(gd_uni_ah_newangle)
+h540 h566 h542
+
+hl_fin:
+gd_uni_ah_rotstat=0
+fa[S1]=0 acc[S1]=100
+h=(ROUND(gd_uni_ah_newangle*10)+40000)
+H567
+m1=5
+h540 h541
+h565
+h556
+
+hl_end:
+h470
+m17
+

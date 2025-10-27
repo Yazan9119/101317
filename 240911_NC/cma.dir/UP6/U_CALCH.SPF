@@ -1,0 +1,146 @@
+;******************************************
+; Zyklus: U_CALCH
+; - Kanal 1: Verschiebung und Drehung 
+;            Koordinatensystem berechnen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 10.06.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Berechnet und aktiviert die Verschiebungen
+; und Drehungen des Koordinatensystems z.B. 
+; für den Winkelkopf
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_CALCH
+;
+;******************************************
+;
+; Variablen
+; =========
+; - lv_calctyp: Berechnungstyp
+;               1: nur Berechnung Parameter 
+;               2: Eintragen in TollCarrier und Frame
+;               3: Berechnen und Eintragen
+; - lv_tcmode: Werkzeugwechsel-Modus
+; - lv_lv_tcangle: Winkel der Drehung
+; - lv_lv_toollen: Werkzeuglänge
+;
+;******************************************
+
+proc U_CALCH(int lv_calctyp, int lv_tcmode, real lv_tcangle, real lv_toollen) ;displof
+
+def real lv_helpr_1, lv_helpr_2, lv_helpr_3, lv_helpr_4
+def int lv_helpi_1, lv_helpi_2, lv_helpi_3, lv_helpi_4
+
+;-- Rücksetzen der Speicher für Verschiebungen
+if (gd_uni_frame_act==0)
+   ;-- Keine Verschiebung aktiv
+   Uni[90]=0 Uni[91]=0 Uni[92]=0 Uni[93]=0 Uni[94]=0 Uni[95]=0
+   Uni[96]=0 Uni[97]=0 Uni[98]=0 Uni[99]=0 gd_uni_frame_act=1
+endif
+
+if (lv_calctyp==1) or (lv_calctyp==3)
+   ;Werkzeugwechselmodus Winkelkopf
+   if (lv_tcmode==66)
+      ;Verschiebungen anhand Drehwinkel berechnen	  
+	  lv_helpi_1=TRUNC(lv_tcangle/90) lv_helpi_2=(lv_helpi_1+1)*90 lv_helpi_1=lv_helpi_1*90 lv_helpr_1=(lv_tcangle-lv_helpi_1)/90 lv_helpr_2=(lv_helpi_2-lv_tcangle)/90
+      lv_helpi_3=TRUNC(lv_tcangle/90) lv_helpi_4=((lv_helpi_3+1) mod 4) lv_helpr_3=((lv_helpr_2*Uni[lv_helpi_3+16]) + (lv_helpr_1*Uni[lv_helpi_4+16]))
+      lv_helpr_4=(sin(lv_helpr_3)*(lv_toollen+Uni[11]))
+  
+      Uni[20]=sin(lv_tcangle) Uni[21]=cos(lv_tcangle) lv_helpr_1=(-Uni[21]*Uni[13]) lv_helpr_2=(Uni[20]*Uni[13])
+      Uni[20]=((Uni[20]*Uni[11])-lv_helpr_1) Uni[21]=((-Uni[21]*Uni[11])+lv_helpr_2) Uni[20]=(-Uni[20]+Uni[14])
+      Uni[21]=(Uni[21]+Uni[15]) Uni[22]=(Uni[12]-lv_helpr_4)
+   endIf
+ 
+   if (lv_tcmode>=21) and (lv_tcmode<=29)
+      Uni[20]=0 Uni[21]=0 Uni[22]=0
+   endIf
+ 
+   if (lv_tcmode==36)
+      Uni[20]=0 Uni[21]=0 Uni[22]=Uni[???] Uni[96]=0 Uni[97]=0 Uni[98]=0
+   endif
+ 
+   ;Werkzeugwechselmodus Spindel
+   if (lv_tcmode==0) or (lv_tcmode==6)
+      ;Verschiebungen Winkelkopf rücksetzen
+      Uni[20]=0 Uni[21]=0 Uni[22]=0 Uni[96]=0 Uni[97]=0 Uni[98]=0
+   endif
+endif
+
+if (lv_calctyp==2) or (lv_calctyp==3)
+   ;Werkzeugwechselmodus Winkelkopf
+   if (lv_tcmode==66)
+      ;-- Verschiebungen und Winkel bestimmen 
+	  lv_helpr_1=(Uni[90]+Uni[93]+Uni[96]) lv_helpr_2=(Uni[91]+Uni[94]+Uni[97]) lv_helpr_3=(Uni[92]+Uni[95]+Uni[98])
+      lv_helpr_4=(360-lv_tcangle) mod 360
+      
+	  ;-- Frames beschreiben
+	  $p_pframe = ctrans(X, lv_helpr_1,Y,lv_helpr_2,Z,lv_helpr_3) : crot(X,90,Z,lv_helpr_4)
+      arot rpl=Uni[99]
+  
+      ;-- Toolcarrier beschreiben
+	  $tc_carr1[1]=Uni[20] $tc_carr2[1]=Uni[21] $tc_carr3[1]=Uni[22]
+      $tc_carr4[1]=0 $tc_carr5[1]=0 $tc_carr6[1]=0
+      $tc_carr7[1]=cos(lv_tcangle) $tc_carr8[1]=-sin(lv_tcangle) $tc_carr9[1]=0
+      $tc_carr10[1]=0 $tc_carr11[1]=0 $tc_carr12[1]=0
+      $tc_carr13[1]=90.0 $tc_carr14[1]=0
+      tcarr=1 tcoabs
+  
+      gotof hl_end
+   endif
+  
+   if (lv_tcmode>=21) and (lv_tcmode<=29)
+      lv_helpr_1=(Uni[90]+Uni[93]+Uni[96]) lv_helpr_2=(Uni[91]+Uni[94]+Uni[97]) lv_helpr_3=(Uni[92]+Uni[95]+Uni[98])
+      
+	  $p_pframe = ctrans(X, lv_helpr_1,Y,lv_helpr_2,Z,lv_helpr_3) : crot(X,0.0,Z,0.0)
+      arot rpl=Uni[99]
+  
+      $tc_carr1[1]=0 $tc_carr2[1]=0 $tc_carr3[1]=0
+      $tc_carr4[1]=0 $tc_carr5[1]=0 $tc_carr6[1]=0
+      $tc_carr7[1]=0 $tc_carr8[1]=0 $tc_carr9[1]=0
+      $tc_carr10[1]=0 $tc_carr11[1]=0 $tc_carr12[1]=0
+      $tc_carr13[1]=0 $tc_carr14[1]=0
+      tcarr=1 tcofr
+      
+	  gotof hl_end
+   endif
+   
+   if (lv_tcmode==36)
+      lv_helpr_1=(Uni[90]+Uni[93]) lv_helpr_2=(Uni[91]+Uni[94]) lv_helpr_3=(Uni[92]+Uni[95])
+      
+	  $p_pframe = ctrans(X, lv_helpr_1,Y,lv_helpr_2,Z,lv_helpr_3) : crot(X,0.0,Z,0.0)
+      arot rpl=Uni[99]
+  
+      $tc_carr1[1]=Uni[20] $tc_carr2[1]=Uni[21] $tc_carr3[1]=Uni[22]
+      $tc_carr4[1]=0 $tc_carr5[1]=0 $tc_carr6[1]=0
+      $tc_carr7[1]=0 $tc_carr8[1]=0 $tc_carr9[1]=0
+      $tc_carr10[1]=0 $tc_carr11[1]=0 $tc_carr12[1]=0
+      $tc_carr13[1]=0 $tc_carr14[1]=0
+      tcarr=1 tcofr
+      
+	  gotof hl_end
+   endif
+   
+   ;Werkzeugwechselmodus Spindel
+   if (lv_tcmode==0) OR (lv_tcmode==6)
+      Uni[96]=0 Uni[97]=0 Uni[98]=0 lv_helpr_1=(Uni[90]+Uni[93]) lv_helpr_2=(Uni[91]+Uni[94]) lv_helpr_3=(Uni[92]+Uni[95])
+      
+	  $p_pframe = ctrans(X, lv_helpr_1,Y,lv_helpr_2,Z,lv_helpr_3) : crot(X,0.0,Z,0.0)
+      arot rpl=Uni[99]
+      
+	  ;-- Toolcarrier komplett löschen
+	  $tc_carr1[0]=0
+      tcarr=1 TCOFR
+   
+      gotof hl_end
+   endif
+endif
+
+hl_end:
+stopre
+
+M17

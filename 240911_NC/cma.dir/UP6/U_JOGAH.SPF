@@ -1,0 +1,35 @@
+;******************************************
+; Zyklus: U_JOGAH
+; - Kanal 1: ASUP für Winkelkopf in Hand
+;            drehen
+;******************************************
+; Autor: M. Schaaf
+; Datum: 27.08.24
+;******************************************
+; 
+; Beschreibung
+; ============
+; Asynchrones Unterprogramm zum drehen des
+; Winkelkopfes in JOG. Aufruf aus PLC
+;
+; Version
+; =======
+; V01.00.00 Übernahme aus Unisign-Zyklus U_JOGAH
+;
+;******************************************
+;
+; Variablen
+; =========
+; - Keine
+; 
+;
+; Hinweise
+; ========
+; 
+;******************************************
+
+proc u_jogah ;displof
+
+u_calch(3, md_p2nuni_ah_mode, md_p2nuni_ah_angle, 0)
+
+m17

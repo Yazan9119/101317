@@ -1,0 +1,84 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 463 | Last Changed Author: hin | Last Changed Date: 2023-05-12 11:05:03 +0200 (Fr, 12 Mai 2023) 
+
+;Variablen für Hochlauf
+redef cv_init_state   inipo 0
+
+redef gd_ax_a_vorh inipo false
+redef gd_ax_b_vorh inipo false
+redef gd_ax_c_vorh inipo false
+redef gd_ax_cm_vorh inipo false
+redef gd_ax_z2_vorh inipo false
+
+;variablen fuer werkzeugwechsel
+redef gv_m      inipo rep(-1)
+redef gv_x      inipo 9999.999
+redef gv_y      inipo 9999.999
+redef gv_z      inipo 9999.999
+redef gv_b      inipo 9999.999
+redef gv_s      inipo 9999.999
+redef gv_spos   inipo 9999.999
+redef gv_d      inipo 9999
+redef gv_a      inipo 9999.999
+redef gv_wpspi  inipo 0
+redef gd_spifrei inipo 9999.999
+
+;variablen für home
+redef gd_home         inipo rep(0)
+redef gd_home_pos     inipo rep(0)
+redef gd_chan_to_axis inipo rep(0)
+
+redef gd_tem          inipo 0
+redef gd_tem_l        inipo 1
+
+redef gd_comp_z_s_factor  inipo 9999.999
+
+redef gv_sgear  inipo -1
+redef gv_sautogear  inipo -1
+
+;Maschinendaten
+redef $ma_pos_limit_plus apr 17 apw 17
+redef $ma_pos_limit_minus apr 17 apw 17
+redef $mn_user_data_int apr 17 apw 17
+redef $mn_user_data_hex apr 17 apw 17
+
+;Serie
+if isfile("/_N_DEF_DIR/_N_MACCESS_SERIE_DEF")
+ call "/_N_DEF_DIR/_N_MACCESS_SERIE_DEF"
+endif
+
+;IPM
+if isfile("/_N_DEF_DIR/_N_MACCESS_IPM_DEF")
+ call "/_N_DEF_DIR/_N_MACCESS_IPM_DEF"
+endif
+
+;Werkzeugmagazin Regal
+if isfile("/_N_DEF_DIR/_N_MACCESS_WMR_DEF")
+ call "/_N_DEF_DIR/_N_MACCESS_WMR_DEF"
+endif
+if isfile("/_N_DEF_DIR/_N_MACCESS_ATC_WMR_DEF")
+ call "/_N_DEF_DIR/_N_MACCESS_ATC_WMR_DEF"
+endif
+
+;Planzug
+if isfile("/_N_DEF_DIR/_N_MACCESS_USLIDE_DEF")
+ call "/_N_DEF_DIR/_N_MACCESS_USLIDE_DEF"
+endif
+
+;Drehen
+if isfile("/_N_DEF_DIR/_N_MACCESS_TURN_DEF")
+ call "/_N_DEF_DIR/_N_MACCESS_TURN_DEF"
+endif
+
+;H4I TO
+if isfile("/_N_DEF_DIR/_N_MACCESS_TO_OPT_DEF")
+ call "/_N_DEF_DIR/_N_MACCESS_TO_OPT_DEF"
+endif
+
+;Applikation
+if isfile("/_N_DEF_DIR/_N_MACCESS_APPL_DEF")
+ call "/_N_DEF_DIR/_N_MACCESS_APPL_DEF"
+endif
+
+m17
+

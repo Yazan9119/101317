@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<!-- Configuration of the Solutionline Alarm & Event Service Adapter -->
+
+<CONFIGURATION>
+
+  <ChannelInfo>
+    <!-- To enable prepending the channel information in front of the message text
+         of part program messages, set value="TRUE". Default: FALSE(Disabled). -->
+    <PrefixAtPartProgramMessages type="bool" value="FALSE"/>
+    <!-- Specifies the type of channel information in alarms and messages:
+         value="1": "Channel <number of channel>: ..."
+         value="2": "Channel <Name of channel from setting data or netnames.ini>: ..."
+         value="3": "<Name of channel from setting data or netnames.ini>: ..."
+         Default value: 1 -->
+    <Type type="int" value="1"/>
+  </ChannelInfo>
+
+  <AlarmTexts>
+    <BaseNames>
+      <OEM_BaseName_01 type="QString" value="oem_alarms"/>
+    </BaseNames>
+  </AlarmTexts>
+
+  <!-- The following narrated part of the configuration is used only when
+       'Indexparameters' (e.g. '%1<OEM>', must literally be written as '%1&lt;OEM&gt;')
+       are used within OEM-alarmtexts.
+       In this case the value of the parameter is used as an index into an
+       additional textlist to reference another text which is placed into
+       the alarmtext instead of the original parameter value. -->
+
+  <!-- Begin of annotation
+  <IndexTexts>
+    <OEM_IndexText_01>
+      <Identifier type="QString" value="OEM"/>
+      <BaseName type="QString" value="oem_indexparams"/>
+      <ContextName type="QString" value="oem_context"/>
+      <MetaTextID type="QString" value="%ParamValue%"/>
+    </OEM_IndexText_01>
+  </IndexTexts>
+  End of annotation -->
+
+</CONFIGURATION>

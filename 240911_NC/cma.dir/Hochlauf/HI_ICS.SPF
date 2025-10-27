@@ -1,0 +1,51 @@
+;VERSION: 10.03.00
+;Last Changed Rev: 1694 | Last Changed Author: art | Last Changed Date: 2024-06-12 07:19:40 +0200 (Mi, 12 Jun 2024) 
+proc hi_ics actblocno sblof displof
+
+;Allgemeine Variablen
+;syg_bm[40] Kompensation Änderung durch Temperatur, Info an PLC
+
+;Funktionsspezifische Variablen
+
+if (not(gd_ax_soll))
+ ids=1099 do setal(67180) syg_bm[39]=true;HELLER Kompensation nicht aktiv
+ g4f0
+ ret ;Aussprung, falls nicht alle Achsen angewählt
+endif
+
+syg_bm[58]=0 syg_bm[59]=1 syg_bm[11]=false
+syg_rm[40]=rep(0,70)
+
+;Rechenvariablen ablöschen
+ids=1087 whenever true do syg_im[28]=0 syg_rm[35]=0 syg_rm[36]=0 syg_rm[37]=0 syg_bm[40]=false
+
+;Spindelklemmung
+if comp_tt_enabled
+ hs_comp_tt
+ ids=1091 whenever pninik1_ok do hs_comp_tt
+endif
+
+;Spindelwachstum durch Drehzahl
+if comp_z_s_enabled
+ hs_comp_z_s
+ ids=1092 whenever pninik1_ok do hs_comp_z_s
+endif
+
+;ITC
+hs_comp_basis
+ids=1093 whenever pninik1_ok do hs_comp_basis
+if comp_mess_enabled
+ hs_comp_mess
+ ids=1094 whenever pninik1_ok do hs_comp_mess
+endif
+
+;Autocal
+hs_comp_autocal
+ids=1096 whenever pninik1_ok do hs_comp_autocal
+
+;Kompensation schreiben
+hs_comp
+ids=1099 whenever (pninik1_ok)and(gd_scaling_system_is_metric==$$MN_SCALING_SYSTEM_IS_METRIC) do hs_comp
+
+ret
+
